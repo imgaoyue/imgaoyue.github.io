@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="baidu-site-verification" content="uHZGT15IXQ" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="GaoThink·思考志">
+    <meta name="keyword"  content="大数据,Bigdata,Linux,CDH">
+    <link rel="shortcut icon" href="/img/ironman-draw.png">
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <!--<link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>-->
+   
+	<title>
+        
+          Flink on YARN：一张图轻松掌握基础架构与启动流程 - GaoThink·思考志
+        
+    </title>
+
+    <link rel="canonical" href="http://gaothink.top/2020/04/13/Flink-Flink-on-YARN：一张图轻松掌握基础架构与启动流程/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS --> 
+    
+        
+<link rel="stylesheet" href="/css/dusign-light.css">
+
+        
+<link rel="stylesheet" href="/css/dusign-common-light.css">
+
+        
+<link rel="stylesheet" href="/css/font-awesome.css">
+
+        
+<link rel="stylesheet" href="/css/toc.css">
+
+        <!-- background effects end -->
+    
+    
+	<!-- fancybox support -->
+    
+      
+<link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css">
+
+    
+	
+    <!-- Pygments Highlight CSS -->
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+
+    
+<link rel="stylesheet" href="/css/widget.css">
+
+
+    
+<link rel="stylesheet" href="/css/rocket.css">
+
+
+    
+<link rel="stylesheet" href="/css/signature.css">
+
+
+    
+<link rel="stylesheet" href="/css/fonts.googleapis.css">
+
+
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <!-- photography -->
+    
+<link rel="stylesheet" href="/css/photography.css">
+
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+	
+	
+	<!-- Baidu Tongji -->
+    
+    <script>
+        // dynamic User by Hux
+        var _baId = '3c93829ba3b988ba61d1e9a4688967d3';
+    
+        // Originial
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "//hm.baidu.com/hm.js?" + _baId;
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+	
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- background effects start -->
+    
+    <!-- background effects end -->
+
+	<!-- Modified by Yu-Hsuan Yen -->
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        
+            
+                background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('')
+                /*post*/
+            
+        
+    }
+    
+</style>
+
+<header class="intro-header" >
+    <!-- Signature -->
+    <div id="signature">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                
+                    <div class="post-heading">
+                        <div class="tags">
+                            
+                              <a class="tag" href="/tags/#Flink" title="Flink">Flink</a>
+                            
+                              <a class="tag" href="/tags/#Yarn" title="Yarn">Yarn</a>
+                            
+                        </div>
+                        <h1>Flink on YARN：一张图轻松掌握基础架构与启动流程</h1>
+                        <h2 class="subheading"></h2>
+                        <span class="meta">
+                            Posted by GY on
+                            2020-04-13
+                        </span>
+
+                        
+                            <div class="blank_box"></div>
+                            <span class="meta">
+                                Words <span class="post-count">3.2k</span> and
+                                Reading Time <span class="post-count">11</span> Minutes
+                            </span>
+                            <div class="blank_box"></div>
+                            <!-- 不蒜子统计 start -->
+                            <span class="meta">
+                                Viewed <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span> Times
+                            </span>
+                            <!-- 不蒜子统计 end -->
+                        
+
+                    </div>
+                
+
+                </div>
+            </div>
+        </div>      
+    </div>
+
+    
+    <div class="waveWrapper">
+        <div class="wave wave_before" style="background-image: url('/img/wave-light.png')"></div>
+        <div class="wave wave_after" style="background-image: url('/img/wave-light.png')"></div>
+    </div>
+    
+</header>
+
+	
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">GaoThink</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archive/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/categories/">Categories</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h2 id="Flink-on-YARN：一张图轻松掌握基础架构与启动流程"><a href="#Flink-on-YARN：一张图轻松掌握基础架构与启动流程" class="headerlink" title="Flink on YARN：一张图轻松掌握基础架构与启动流程"></a>Flink on YARN：一张图轻松掌握基础架构与启动流程</h2><p><a href="https://yq.aliyun.com/articles/719262?type=2" target="_blank" rel="noopener">原文:《Flink on YARN：一张图轻松掌握基础架构与启动流程》</a></p>
+<p><strong>作者：杨弢（搏远）</strong></p>
+<p>Flink 支持 Standalone 独立部署和 YARN、Kubernetes、Mesos 等集群部署模式，其中 YARN 集群部署模式在国内的应用越来越广泛。Flink 社区将推出 Flink on YARN 应用解读系列文章，分为上、下两篇。本文基于 FLIP-6 重构后的资源调度模型将介绍 Flink on YARN 应用启动全流程，并进行详细步骤解析。下篇将根据社区大群反馈，解答客户端和Flink Cluster的常见问题，分享相关问题的排查思路。</p>
+<hr>
+<h2 id="Flink-on-YARN-流程图"><a href="#Flink-on-YARN-流程图" class="headerlink" title="Flink on YARN 流程图"></a>Flink on YARN 流程图</h2><p>Flink on YARN集群部署模式涉及YARN和Flink两大开源框架，应用启动流程的很多环节交织在一起，为了便于大家理解，在一张图上画出了Flink on YARN基础架构和应用启动全流程，并对关键角色和流程进行了介绍说明，整个启动流程又被划分成客户端提交（流程标注为紫色）、Flink Cluster启动和Job提交运行（流程标注为橙色）两个阶段分别阐述，由于分支和细节太多，本文会忽略掉一些，只介绍关键流程（基于Flink开源1.9版本源码整理）。</p>
+<p><img src="https://ucc.alicdn.com/pic/developer-ecology/7730f523b1bd4d73ba40926b4932c06d.png" alt="Flink on YARN 全流程图.png"></p>
+<hr>
+<h2 id="客户端提交流程"><a href="#客户端提交流程" class="headerlink" title="客户端提交流程"></a>客户端提交流程</h2><p><strong>1.执行命令</strong>:<code>bin/flink run -d -m yarn-cluster</code> …或<code>bin/yarn-session.sh</code>…来提交per-job运行模式或session运行模式的应用；</p>
+<p><strong>2.解析命令参数项并初始化，启动指定运行模式</strong>，如果是per-job运行模式将根据命令行参数指定的Job主类创建job graph；</p>
+<ul>
+<li>如果可以从命令行参数(-yid )或YARN properties临时文件(<code>${java.io.tmpdir}/.yarn-properties-${user.name}</code>)中获取应用ID，向指定的应用提交Job；</li>
+<li>否则当命令行参数中包含 -d（表示detached模式）和 -m yarn-cluster（表示指定YARN集群模式），启动per-job运行模式；</li>
+<li>否则当命令行参数项不包含 -yq（表示查询YARN集群可用资源）时，启动session运行模式；</li>
+</ul>
+<p><strong>3.获取YARN集群信息、新应用ID并启动运行前检查；</strong></p>
+<ul>
+<li><strong>通过YarnClient向YARN ResourceManager</strong>(下文缩写为：YARN RM，YARN Master节点，负责整个集群资源的管理和调度)<strong>请求创建一个新应用</strong>（YARN RM收到创建应用请求后生成新应用ID和container申请的资源上限后返回），并且获取YARN Slave节点报告（YARN RM返回全部slave节点的ID、状态、rack、http地址、总资源、已使用资源等信息）；</li>
+<li><strong>运行前检查</strong>：(1) 简单验证YARN集群能否访问；(2) 最大node资源能否满足flink JobManager/TaskManager vcores资源申请需求；(3) 指定queue是否存在(不存在也只是打印WARN信息，后续向YARN提交时排除异常并退出)；(4)当预期应用申请的Container资源会超出YARN资源限制时抛出异常并退出；(5) 当预期应用申请不能被满足时（例如总资源超出YARN集群可用资源总量、Container申请资源超出NM可用资源最大值等）提供一些参考信息。</li>
+</ul>
+<p>4.<strong>将应用配置</strong>(<code>flink-conf.yaml、logback.xml、log4j.properties</code>)和相关文件(flink jars、ship files、user jars、job graph等)上传至分布式存储(例如HDFS)的应用暂存目录(<code>/user/${user.name}/.flink/</code>)；</p>
+<p>5.<strong>准备应用提交上下文</strong>(ApplicationSubmissionContext，包括应用的名称、类型、队列、标签等信息和应用Master的container的环境变量、classpath、资源大小等)，注册处理部署失败的shutdown hook（清理应用对应的HDFS目录），然后通过YarnClient向YARN RM提交应用；</p>
+<p>6.<strong>循环等待直到应用状态为RUNNING，包含两个阶段：</strong></p>
+<ul>
+<li><strong>循环等待应用提交成功（SUBMITTED）</strong>：默认每隔200ms通过YarnClient获取应用报告，如果应用状态不是NEW和NEW_SAVING则认为提交成功并退出循环，每循环10次会将当前的应用状态输出至日志：”Application submission is not finished, submitted application is still in “，提交成功后输出日志：”Submitted application “</li>
+<li><strong>循环等待应用正常运行（RUNNING）</strong>：每隔250ms通过YarnClient获取应用报告，每轮循环也会将当前的应用状态输出至日志：”Deploying cluster, current state “。应用状态成功变为RUNNING后将输出日志”YARN application has been deployed successfully.” 并退出循环，如果等到的是非预期状态如FAILED/FINISHED/KILLED,就会在输出YARN返回的诊断信息（”The YARN application unexpectedly switched to state during deployment. Diagnostics from YARN: …”）之后抛出异常并退出。</li>
+</ul>
+<hr>
+<h2 id="Flink-Cluster启动流程"><a href="#Flink-Cluster启动流程" class="headerlink" title="Flink Cluster启动流程"></a>Flink Cluster启动流程</h2><p><strong>1.YARN RM中的ClientRMService</strong>（为普通用户提供的RPC服务组件，处理来自客户端的各种RPC请求，比如查询YARN集群信息，提交、终止应用等）<strong>接收到应用提交请求，简单校验后将请求转交给RMAppManager</strong>（YARN RM内部管理应用生命周期的组件）；</p>
+<p><strong>2.RMAppManager根据应用提交上下文内容创建初始状态为NEW的应用</strong>，将应用状态持久化到RM状态存储服务（例如ZooKeeper集群，RM状态存储服务用来保证RM重启、HA切换或发生故障后集群应用能够正常恢复，后续流程中的涉及状态存储时不再赘述），应用状态变为NEW_SAVING；</p>
+<p><strong>3.应用状态存储完成后，应用状态变为SUBMITTED；</strong>RMAppManager开始向ResourceScheduler（YARN RM可拔插资源调度器，YARN自带三种调度器<code>FifoScheduler/FairScheduler/CapacityScheduler</code>，其中CapacityScheduler支持功能最多使用最广泛，FifoScheduler功能最简单基本不可用，今年社区已明确不再继续支持FairScheduler，建议已有用户迁至CapacityScheduler）提交应用，如果无法正常提交（例如队列不存在、不是叶子队列、队列已停用、超出队列最大应用数限制等）则抛出拒绝该应用，应用状态先变为FINAL_SAVING触发应用状态存储流程并在完成后变为FAILED；如果提交成功，应用状态变为ACCEPTED；</p>
+<p><strong>4.开始创建应用运行实例</strong>(ApplicationAttempt，由于一次运行实例中最重要的组件是ApplicationMaster，下文简称AM，它的状态代表了ApplicationAttempt的当前状态，所以ApplicationAttempt实际也代表了AM)，初始状态为NEW；</p>
+<p><strong>5.初始化应用运行实例信息，</strong>并向ApplicationMasterService（AM&amp;RM协议接口服务，处理来自AM的请求，主要包括注册和心跳）注册，应用实例状态变为SUBMITTED；</p>
+<p><strong>6.RMAppManager维护的应用实例开始初始化AM资源申请信息并重新校验队列</strong>，然后向ResourceScheduler申请AM Container（Container是YARN中资源的抽象，包含了内存、CPU等多维度资源），应用实例状态变为ACCEPTED；</p>
+<p><strong>7.ResourceScheduler会根据优先级</strong>（队列/应用/请求每个维度都有优先级配置）<strong>从根队列开始层层递进</strong>，先后选择当前优先级最高的子队列、应用直至具体某个请求，然后结合集群资源分布等情况作出分配决策，AM Container分配成功后，应用实例状态变为ALLOCATED_SAVING，并触发应用实例状态存储流程，存储成功后应用实例状态变为ALLOCATED；</p>
+<p><strong>8.RMAppManager维护的应用实例开始通知ApplicationMasterLauncher</strong>（AM生命周期管理服务，负责启动或清理AM container）启动AM container，ApplicationMasterLauncher与YARN NodeManager（下文简称YARN NM，与YARN RM保持通信，负责管理单个节点上的全部资源、Container生命周期、附属服务等，监控节点健康状况和Container资源使用）建立通信并请求启动AM container；</p>
+<p><strong>9.ContainerManager</strong>（YARN NM核心组件，管理所有Container的生命周期）<strong>接收到AM container启动请求</strong>，YARN NM开始校验Container Token及资源文件，创建应用实例和Container实例并存储至本地，结果返回后应用实例状态变为LAUNCHED；</p>
+<p><strong>10.ResourceLocalizationService</strong>（资源本地化服务，负责Container所需资源的本地化。它能够按照描述从HDFS上下载Container所需的文件资源，并尽量将它们分摊到各个磁盘上以防止出现访问热点）<strong>初始化各种服务组件</strong>、创建工作目录、从HDFS下载运行所需的各种资源至Container工作目录（路径为: <code>${yarn.nodemanager.local-dirs}/usercache/${user}/appcache//</code>）；</p>
+<p><strong>11.ContainersLauncher</strong>（负责container的具体操作，包括启动、重启、恢复和清理等）<strong>将待运行Container所需的环境变量和运行命令写到Container工作目录下</strong>的launch_container.sh脚本中，然后运行该脚本启动Container；</p>
+<p><strong>12.Container进程加载并运行ClusterEntrypoint</strong>(Flink JobManager入口类，每种集群部署模式和应用运行模式都有相应的实现，例如在YARN集群部署模式下，per-job应用运行模式实现类是YarnJobClusterEntrypoint，session应用运行模式实现类是YarnSessionClusterEntrypoint)，首先初始化相关运行环境：</p>
+<ul>
+<li>输出各软件版本及运行环境信息、命令行参数项、classpath等信息；</li>
+<li>注册处理各种SIGNAL的handler:记录到日志</li>
+<li>注册JVM关闭保障的shutdown hook：避免JVM退出时被其他shutdown hook阻塞</li>
+<li>打印YARN运行环境信息：用户名</li>
+<li>从运行目录中加载flink conf</li>
+<li>初始化文件系统</li>
+<li>创建并启动各类内部服务（包括RpcService、HAService、BlobServer、HeartbeatServices、MetricRegistry、ExecutionGraphStore等）</li>
+<li>将RPC address和port更新到flink conf配置</li>
+</ul>
+<p><strong>13.启动ResourceManager</strong>（Flink资源管理核心组件，包含YarnResourceManager和SlotManager两个子组件，YarnResourceManager负责外部资源管理，与YARN RM建立通信并保持心跳，申请或释放TaskManager资源，注销应用等；SlotManager则负责内部资源管理，维护全部Slot信息和状态）及相关服务，创建异步AMRMClient，开始注册AM，注册成功后每隔一段时间（心跳间隔配置项：<code>${yarn.heartbeat.interval</code>}，默认5s）向YARN RM发送心跳来发送资源更新请求和接受资源变更结果。YARN RM内部该应用和应用运行实例的状态都变为RUNNING，并通知AMLivelinessMonitor服务监控AM是否存活状态，当心跳超过一定时间（默认10分钟）触发AM failover流程；</p>
+<p><strong>14.启动Dispatcher</strong>（负责接收用户提供的作业，并且负责为这个新提交的作业拉起一个新的 JobManager）及相关服务（包括REST endpoint等），在per-job运行模式下，Dispatcher将直接从Container工作目录加载JobGraph文件；在session运行模式下，Dispatcher将在接收客户端提交的Job（_通过BlockServer接收job graph文件）后再进行后续流程；</p>
+<p><strong>15.根据JobGraph启动JobManager</strong>（负责作业调度、管理Job和Task的生命周期），构建ExecutionGraph（JobGraph的并行化版本，调度层最核心的数据结构）；</p>
+<p><strong>16.JobManager开始执行ExecutionGraph</strong>，向ResourceManager申请资源；</p>
+<p><strong>17.ResourceManager将资源请求加入等待请求队列</strong>，并通过心跳向YARN RM申请新的Container资源来启动TaskManager进程；后续流程如果有空闲Slot资源，SlotManager将其分配给等待请求队列中匹配的请求，不用再通过18. YarnResourceManager申请新的TaskManager；</p>
+<p><strong>18.YARN ApplicationMasterService接收到资源请求后，解析出新的资源请求并更新应用请求信息；</strong></p>
+<p><strong>19.YARN ResourceScheduler成功为该应用分配资源后更新应用信息</strong>，ApplicationMasterService接收到Flink JobManager的下一次心跳时返回新分配资源信息；</p>
+<p><strong>20.Flink ResourceManager接收到新分配的Container资源后</strong>，准备好TaskManager启动上下文（ContainerLauncherContext，生成TaskManager配置并上传至分布式存储，配置其他依赖和环境变量等），然后向YARN NM申请启动TaskManager进程，YARN NM启动Container的流程与AM Container启动流程基本类似，区别在于应用实例在NM上已存在并未RUNNING状态时则跳过应用实例初始化流程，这里不再赘述；</p>
+<p><strong>21.TaskManager进程加载并运行YarnTaskExecutorRunner</strong>（Flink TaskManager入口类），初始化流程完成后启动TaskExecutor（负责执行Task相关操作）；</p>
+<p><strong>22.TaskExecutor启动后先向ResourceManager注册</strong>，成功后再向SlotManager汇报自己的Slot资源与状态；<br>SlotManager接收到Slot空闲资源后主动触发Slot分配，从等待请求队列中选出合适的资源请求后，向<br>TaskManager请求该Slot资源</p>
+<p><strong>23.TaskManager收到请求后检查该Slot是否可分配</strong>（不存在则返回异常信息）、Job是否已注册（没有则先注册再分配Slot），检查通过后将Slot分配给JobManager；</p>
+<p><strong>24.JobManager检查Slot分配是否重复</strong>，通过后通知Execution执行部署task流程，向TaskExecutor提交task；<br>TaskExecutor启动新的线程运行Task。</p>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a href="https://yq.aliyun.com/go/articleRenderRedirect?url=https%3A%2F%2Fgithub.com%2Fapache%2Fflink%2Ftree%2Frelease-1.9.0" target="_blank" rel="noopener">Flink Release-1.9 SourceCode</a><br><a href="https://yq.aliyun.com/go/articleRenderRedirect?url=https%3A%2F%2Fci.apache.org%2Fprojects%2Fflink%2Fflink-docs-release-1.9%2F" target="_blank" rel="noopener">Flink Release-1.9 Documents</a><br><a href="https://yq.aliyun.com/go/articleRenderRedirect?url=%23" target="_blank" rel="noopener">FLIP-6 - Flink Deployment and Process Model - Standalone, Yarn, Mesos, Kubernetes, etc.</a><br><a href="https://yq.aliyun.com/go/articleRenderRedirect?url=https%3A%2F%2Fgithub.com%2Fapache%2Fhadoop%2Ftree%2Fbranch-3.2" target="_blank" rel="noopener">YARN 3.2 SourceCode</a><br><a href="https://yq.aliyun.com/go/articleRenderRedirect?url=http%3A%2F%2Fhadoop.apache.org%2Fdocs%2Fr3.2.0%2F" target="_blank" rel="noopener">YARN 3.2.0 Documents</a></p>
+
+                
+                <hr>
+                <!-- Pager -->
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/04/22/Linux-轻量级的集群管理利器ClusterShell/" data-toggle="tooltip" data-placement="top" title="轻量级的集群管理利器ClusterShell">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/04/12/Flink-Apache-Flink：网络流控及反压/" data-toggle="tooltip" data-placement="top" title="Apache Flink：网络流控及反压">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                <!-- tip start -->
+                
+                <div class="comment_notes_blank"></div>
+                <div class="visitor_notice">
+                    <img 
+                        src="/img/notice.png" 
+                        alt="notice"
+                        title="notice"/>
+                    <p class="notice">
+                        除非注明，本博文章均为原创，转载请以链接形式标明本文地址.
+                    </p>
+                </div>
+                
+
+                
+                <div class="comment_notes">
+                    <p>
+                        
+                    </p>
+                </div>
+                
+                <!-- tip end -->
+
+                <!-- Music start-->
+                
+                <!-- Music end -->
+
+                <!-- Sharing -->
+                
+                <!-- Sharing -->
+
+                <!-- gitment start -->
+                
+                <!-- gitment end -->
+			
+			<!-- valine_comments start -->	
+						
+			<!-- valine_comments end -->
+			
+			<!-- 来必力City版安装代码 -->
+                
+                <hr>
+                <div id="lv-container" data-id="city" data-uid="MTAyMC80OTY0OC8yNjEzOQ==">
+                    <script type="text/javascript">
+                   (function(d, s) {
+                       var j, e = d.getElementsByTagName(s)[0];
+
+                       if (typeof LivereTower === 'function') { return; }
+
+                       j = d.createElement(s);
+                       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+                       j.async = true;
+
+                       e.parentNode.insertBefore(j, e);
+                   })(document, 'script');
+                    </script>
+                <noscript> 为正常使用来必力评论功能请激活JavaScript</noscript>
+                </div>
+                
+                <!-- City版安装代码已完成 -->
+
+            </div>
+            
+
+			
+            <!-- Tabe of Content -->
+            <!-- Table of Contents -->
+
+    
+      <aside id="sidebar">
+        <div id="toc" class="toc-article">
+        <strong class="toc-title">Contents</strong>
+        
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Flink-on-YARN：一张图轻松掌握基础架构与启动流程"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">Flink on YARN：一张图轻松掌握基础架构与启动流程</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Flink-on-YARN-流程图"><span class="toc-nav-number">2.</span> <span class="toc-nav-text">Flink on YARN 流程图</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#客户端提交流程"><span class="toc-nav-number">3.</span> <span class="toc-nav-text">客户端提交流程</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Flink-Cluster启动流程"><span class="toc-nav-number">4.</span> <span class="toc-nav-text">Flink Cluster启动流程</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#参考资料"><span class="toc-nav-number">5.</span> <span class="toc-nav-text">参考资料</span></a></li></ol>
+        
+        </div>
+      </aside>
+    
+
+                
+            <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#Flink" title="Flink">Flink</a>
+                        
+                          <a class="tag" href="/tags/#Yarn" title="Yarn">Yarn</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'left',
+          icon: 'ℬ'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+
+
+<style  type="text/css">
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; GY 2021 
+                    <br>
+                    Powered by 
+                    <a href="https://github.com/dusign/hexo-theme-snail" target="_blank" rel="noopener">
+                        <i>hexo-theme-snail</i>
+                    </a> | 
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0"
+                        width="100px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=dusign&repo=hexo-theme-snail&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- Search -->
+
+<script src="/js/search.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 百度站长 -->
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://gaothink.top/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Search -->
+
+    <script type="text/javascript">      
+        var search_path = "search.xml";
+        if (search_path.length == 0) {
+            search_path = "search.xml";
+        }
+    var path = "/" + search_path;
+    searchFunc(path, 'local-search-input', 'local-search-result');
+    </script>
+
+
+<!-- busuanzi -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+	<a id="rocket" href="#top" class=""></a>
+	<script type="text/javascript" src="/js/totop.js?v=1.0.0" async=""></script>
+    <script type="text/javascript" src="/js/toc.js?v=1.0.0" async=""></script>
+	
+    
+        <!-- background effects line -->
+        
+
+        
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+        
+
+        <!-- background effects end -->
+    
+
+    <!--<script size="50" alpha='0.3' zIndex="-999" src="/js/ribbonStatic.js"></script>-->
+    
+        <script src="/js/ribbonDynamic.js"></script>
+    
+	
+	
+        <script type="text/javascript" src="/js/fancybox/jquery.fancybox.min.js"></script>
+        <script type="text/javascript" src="/js/wrapImage.js"></script>
+    
+	
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>

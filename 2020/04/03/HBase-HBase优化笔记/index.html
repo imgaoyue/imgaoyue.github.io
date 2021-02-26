@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="baidu-site-verification" content="uHZGT15IXQ" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="GaoThink·思考志">
+    <meta name="keyword"  content="大数据,Bigdata,Linux,CDH">
+    <link rel="shortcut icon" href="/img/ironman-draw.png">
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <!--<link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>-->
+   
+	<title>
+        
+          HBase服务端优化不完全笔记 - GaoThink·思考志
+        
+    </title>
+
+    <link rel="canonical" href="http://gaothink.top/2020/04/03/HBase-HBase优化笔记/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS --> 
+    
+        
+<link rel="stylesheet" href="/css/dusign-light.css">
+
+        
+<link rel="stylesheet" href="/css/dusign-common-light.css">
+
+        
+<link rel="stylesheet" href="/css/font-awesome.css">
+
+        
+<link rel="stylesheet" href="/css/toc.css">
+
+        <!-- background effects end -->
+    
+    
+	<!-- fancybox support -->
+    
+      
+<link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css">
+
+    
+	
+    <!-- Pygments Highlight CSS -->
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+
+    
+<link rel="stylesheet" href="/css/widget.css">
+
+
+    
+<link rel="stylesheet" href="/css/rocket.css">
+
+
+    
+<link rel="stylesheet" href="/css/signature.css">
+
+
+    
+<link rel="stylesheet" href="/css/fonts.googleapis.css">
+
+
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <!-- photography -->
+    
+<link rel="stylesheet" href="/css/photography.css">
+
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+	
+	
+	<!-- Baidu Tongji -->
+    
+    <script>
+        // dynamic User by Hux
+        var _baId = '3c93829ba3b988ba61d1e9a4688967d3';
+    
+        // Originial
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "//hm.baidu.com/hm.js?" + _baId;
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+	
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- background effects start -->
+    
+    <!-- background effects end -->
+
+	<!-- Modified by Yu-Hsuan Yen -->
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        
+            
+                background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('')
+                /*post*/
+            
+        
+    }
+    
+</style>
+
+<header class="intro-header" >
+    <!-- Signature -->
+    <div id="signature">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                
+                    <div class="post-heading">
+                        <div class="tags">
+                            
+                              <a class="tag" href="/tags/#HBase" title="HBase">HBase</a>
+                            
+                              <a class="tag" href="/tags/#优化" title="优化">优化</a>
+                            
+                        </div>
+                        <h1>HBase服务端优化不完全笔记</h1>
+                        <h2 class="subheading"></h2>
+                        <span class="meta">
+                            Posted by GY on
+                            2020-04-03
+                        </span>
+
+                        
+                            <div class="blank_box"></div>
+                            <span class="meta">
+                                Words <span class="post-count">5.5k</span> and
+                                Reading Time <span class="post-count">20</span> Minutes
+                            </span>
+                            <div class="blank_box"></div>
+                            <!-- 不蒜子统计 start -->
+                            <span class="meta">
+                                Viewed <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span> Times
+                            </span>
+                            <!-- 不蒜子统计 end -->
+                        
+
+                    </div>
+                
+
+                </div>
+            </div>
+        </div>      
+    </div>
+
+    
+    <div class="waveWrapper">
+        <div class="wave wave_before" style="background-image: url('/img/wave-light.png')"></div>
+        <div class="wave wave_after" style="background-image: url('/img/wave-light.png')"></div>
+    </div>
+    
+</header>
+
+	
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">GaoThink</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archive/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/categories/">Categories</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h1 id="HBase服务端优化不完全笔记"><a href="#HBase服务端优化不完全笔记" class="headerlink" title="HBase服务端优化不完全笔记"></a>HBase服务端优化不完全笔记</h1><p>对HBase的配置进行优化调整，可以尽可能发挥硬件的最大优势</p>
+<blockquote>
+<p>参考：<a href="https://yq.aliyun.com/articles/665520" target="_blank" rel="noopener">HBase生产环境配置与使用优化不完全指南</a></p>
+</blockquote>
+<h2 id="1-Region规划"><a href="#1-Region规划" class="headerlink" title="1 Region规划"></a>1 Region规划</h2><p>官方参考：<a href="http://hbase.apache.org/book.html" target="_blank" rel="noopener">http://hbase.apache.org/book.html</a></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200403222543.png" alt=""></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200403222555.png" alt=""></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200403222609.png" alt=""></p>
+<p>对于Region的大小，HBase官方文档推荐单个在10G-20G之间，单台RegionServer的数量控制在20-200之间。</p>
+<p>Region过大过小都会有不良影响：</p>
+<ul>
+<li><p>过大的Region</p>
+<ul>
+<li>优点：迁移速度快、减少总RPC请求、减少Flush</li>
+<li>缺点：compaction的时候资源消耗非常大、可能会有数据分散不均衡的问题</li>
+</ul>
+</li>
+<li><p>过小的Region</p>
+<ul>
+<li>优点：集群负载平衡、HFile比较少compaction影响小</li>
+<li>缺点：迁移或者balance效率低、频繁flush导致频繁的compaction、维护开销大</li>
+</ul>
+</li>
+</ul>
+<p>对于目前版本，Region的基础值计算公式如下：</p>
+<p><code>((RS Xmx) * hbase.regionserver.global.memstore.upperLimit) / (hbase.hregion.memstore.flush.size * (# column families))</code></p>
+<p>比如我们分配给RegionServer  16G内存，memstore比例为默认的0.4，大小为128M，只有一个CF</p>
+<p>那么根据公式我们可以得出16*1024*0.4 / 128 ≈ 51 个活跃的region</p>
+<p>我们适当放大2~3倍作为我们的目标最大活跃Region  也就是100~150左右</p>
+<p>如果RS的Region超过这个值可能会导致不良后果，如服务器反应迟钝或compact风暴</p>
+<p>所以要视磁盘空间、机器数量确定当前Region配置</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200403175612.png" alt=""></p>
+<h2 id="2-Memstore刷写配置"><a href="#2-Memstore刷写配置" class="headerlink" title="2 Memstore刷写配置"></a>2 Memstore刷写配置</h2><p>Memstore我们主要关注Memstore、Region和RegionServer级别的刷写，其中Memstore和Region级别的刷写并不会对线上造成太大影响，但是需要控制其阈值和刷写频次来进一步提高性能，而RegionServer级别的刷写将会阻塞请求直至刷写完成，对线上影响巨大，需要尽量避免。</p>
+<ul>
+<li>Memstore级别控制<ul>
+<li><code>hbase.hregion.memstore.flush.size=256M</code></li>
+</ul>
+</li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200403222902.png" alt=""></p>
+<p>控制的Memstore大小默认值为128M，太过频繁的刷写会导致IO繁忙，刷新队列阻塞等。<br> 设置太高也有坏处，可能会较为频繁的触发RegionServer级别的Flush。</p>
+<ul>
+<li><p>Region级别控制</p>
+<ul>
+<li><code>hbase.hregion.memstore.block.multiplier=3</code></li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200403222915.png" alt=""></p>
+<p>控制的Region flush上限默认值为2，意味着一个Region中最大同时存储的Memstore大小为2 * MemstoreSize ，如果一个表的列族过多将频繁触发，该值视情况调整。</p>
+</li>
+</ul>
+<ul>
+<li>RegionServer级别控制<ul>
+<li><code>hbase.regionserver.global.memstore.upperLimit</code></li>
+</ul>
+</li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200403222845.png" alt=""></p>
+<p>控制着整个RegionServer中Memstore最大占据的比例，一定程度上可以理解为RS内存中写缓存的大小</p>
+<blockquote>
+<p>注意：hfile.block.cache.size + hbase.regionserver.global.memstore.upperLimit &lt;= 0.8<br>否则RegionServer无法启动</p>
+</blockquote>
+<p><strong>CDH官方图便于理解offheap下HBase的内存模型</strong></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200407105214.png" alt=""></p>
+<h2 id="3-其他HBase服务端配置"><a href="#3-其他HBase服务端配置" class="headerlink" title="3 其他HBase服务端配置"></a>3 其他HBase服务端配置</h2><h4 id="应用层响应配置"><a href="#应用层响应配置" class="headerlink" title="应用层响应配置"></a>应用层响应配置</h4><p>响应配置的优化能够提升HBase服务端的处理性能，一般情况下默认配置都是无法满足高并发需求的。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200407105359.png" alt=""></p>
+<ul>
+<li>hbase.master.handler.count=256: Master处理客户端请求最大线程数</li>
+<li>hbase.regionserver.handler.count=256: RS处理客户端请求最大线程数</li>
+</ul>
+<blockquote>
+<p>说明：如果设置小了，高并发的情况下，应用层将会收到HBase服务端抛出的无法创建新线程的异常从而导致应用层线程阻塞。</p>
+</blockquote>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200407110003.png" alt=""></p>
+<ul>
+<li>hbase.client.retries.number=3</li>
+<li>hbase.rpc.timeout=5000</li>
+</ul>
+<blockquote>
+<p>说明：默认值太大了，一旦应用层连接不上HBse服务端将会进行近乎无限的重试，从而导致线程堆积应用假死等，影响比较严重，可以适当减少。</p>
+</blockquote>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200407110125.png" alt=""></p>
+<ul>
+<li>hbase.hstore.blockingStoreFiles=100: storefile个数达到该值则block写入</li>
+</ul>
+<blockquote>
+<p>说明：线上该参数可以调大一些，不然hfile达到指定数量时就会block等到compact。</p>
+</blockquote>
+<h4 id="HDFS相关配置"><a href="#HDFS相关配置" class="headerlink" title="HDFS相关配置"></a>HDFS相关配置</h4><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200407110337.png" alt=""></p>
+<ul>
+<li>dfs.datanode.handler.count=64</li>
+<li>dfs.datanode.max.transfer.threads=12288</li>
+<li>dfs.namenode.handler.count=256</li>
+<li>dfs.namenode.service.handler.count=256</li>
+</ul>
+<blockquote>
+<p>同理 —  增大线程数，防止高并发情况下线程阻塞</p>
+</blockquote>
+<hr>
+<h2 id="4-优化点思考"><a href="#4-优化点思考" class="headerlink" title="4 优化点思考"></a>4 优化点思考</h2><blockquote>
+<p><strong>以下内容基于HBase - 0.98版本</strong></p>
+</blockquote>
+<h3 id="1-读优化"><a href="#1-读优化" class="headerlink" title="1 读优化"></a>1 读优化</h3><p>摘录修改自<a href="https://www.jianshu.com/p/0144ae2e5135" target="_blank" rel="noopener">Hbase—优化之读性能优化</a></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330104934.png" alt=""></p>
+<h4 id="HBase客户端优化"><a href="#HBase客户端优化" class="headerlink" title="HBase客户端优化"></a>HBase客户端优化</h4><h5 id="1-Scan缓存是否设置合理？"><a href="#1-Scan缓存是否设置合理？" class="headerlink" title="1. Scan缓存是否设置合理？"></a>1. Scan缓存是否设置合理？</h5><p>通常来讲一次scan会返回大量数据，因此客户端发起一次scan请求，实际并不会一次就将所有数据加载到本地，而是分成多次RPC请求进行加载，这样设计一方面是因为大量数据请求可能会导致网络带宽严重消耗进而影响其他业务，另一方面也有可能因为数据量太大导致本地客户端发生OOM。在这样的设计体系下用户会首先加载一部分数据到本地，然后遍历处理，再加载下一部分数据到本地处理，如此往复，直至所有数据都加载完成。数据加载到本地就存放在scan缓存中，默认100条数据大小。</p>
+<p>通常情况下，默认的scan缓存设置就可以正常工作的。但是在一些大scan（一次scan可能需要查询几万甚至几十万行数据）来说，每次请求100条数据意味着一次scan需要几百甚至几千次RPC请求，这种交互的代价无疑是很大的。因此可以考虑将scan缓存设置增大，比如设为500或者1000就可能更加合适。笔者之前做过一次试验，在一次scan扫描10w+条数据量的条件下，将scan缓存从100增加到1000，可以有效降低scan请求的总体延迟，延迟基本降低了25%左右。</p>
+<p><strong>优化建议：大scan场景下将scan缓存从100增大到500或者1000，用以减少RPC次数</strong></p>
+<h5 id="2-Get请求是否可以使用批量请求？"><a href="#2-Get请求是否可以使用批量请求？" class="headerlink" title="2. Get请求是否可以使用批量请求？"></a>2. Get请求是否可以使用批量请求？</h5><p>HBase分别提供了单条get以及批量get的API接口，使用批量get接口可以减少客户端到RegionServer之间的RPC连接数，提高读取性能。另外需要注意的是，批量get请求要么成功返回所有请求数据，要么抛出异常。</p>
+<p><strong>优化建议：使用批量get进行读取请求</strong></p>
+<h5 id="3-请求是否可以显示指定列族或者列？"><a href="#3-请求是否可以显示指定列族或者列？" class="headerlink" title="3. 请求是否可以显示指定列族或者列？"></a>3. 请求是否可以显示指定列族或者列？</h5><p>HBase是典型的列族数据库，意味着同一列族的数据存储在一起，不同列族的数据分开存储在不同的目录下。如果一个表有多个列族，只是根据Rowkey而不指定列族进行检索的话不同列族的数据需要独立进行检索，性能必然会比指定列族的查询差很多，很多情况下甚至会有2倍～3倍的性能损失。</p>
+<p><strong>优化建议：可以指定列族或者列进行精确查找的尽量指定查找</strong></p>
+<h5 id="4-离线批量读取请求是否设置禁止缓存？"><a href="#4-离线批量读取请求是否设置禁止缓存？" class="headerlink" title="4. 离线批量读取请求是否设置禁止缓存？"></a>4. 离线批量读取请求是否设置禁止缓存？</h5><p>通常离线批量读取数据会进行一次性全表扫描，一方面数据量很大，另一方面请求只会执行一次。这种场景下如果使用scan默认设置，就会将数据从HDFS加载出来之后放到缓存。可想而知，大量数据进入缓存必将其他实时业务热点数据挤出，其他业务不得不从HDFS加载，进而会造成明显的读延迟毛刺</p>
+<p><strong>优化建议：离线批量读取请求设置禁用缓存，scan.setBlockCache(false)</strong></p>
+<h4 id="HBase服务器端优化"><a href="#HBase服务器端优化" class="headerlink" title="HBase服务器端优化"></a>HBase服务器端优化</h4><h5 id="5-读请求是否均衡？"><a href="#5-读请求是否均衡？" class="headerlink" title="5. 读请求是否均衡？"></a>5. 读请求是否均衡？</h5><p>极端情况下假如所有的读请求都落在一台RegionServer的某几个Region上，这一方面不能发挥整个集群的并发处理能力，另一方面势必造成此台RegionServer资源严重消耗（比如IO耗尽、handler耗尽等），落在该台RegionServer上的其他业务会因此受到很大的波及。可见，读请求不均衡不仅会造成本身业务性能很差，还会严重影响其他业务。当然，写请求不均衡也会造成类似的问题，可见负载不均衡是HBase的大忌。</p>
+<p>观察确认：观察所有RegionServer的读请求QPS曲线，确认是否存在读请求不均衡现象</p>
+<p><strong>优化建议：RowKey必须进行散列化处理（比如MD5散列），同时建表必须进行预分区处理</strong></p>
+<h5 id="6-BlockCache是否设置合理？"><a href="#6-BlockCache是否设置合理？" class="headerlink" title="6. BlockCache是否设置合理？"></a>6. BlockCache是否设置合理？</h5><p>BlockCache作为读缓存，对于读性能来说至关重要。默认情况下BlockCache和Memstore的配置相对比较均衡（各占40%）</p>
+<p>观察确认：观察所有RegionServer的缓存未命中率、配置文件相关配置项一级GC日志，确认BlockCache是否可以优化</p>
+<p><strong>优化建议：可以根据集群业务进行修正，比如读多写少业务可以将BlockCache占比调大</strong></p>
+<h5 id="7-HFile文件是否太多？"><a href="#7-HFile文件是否太多？" class="headerlink" title="7. HFile文件是否太多？"></a>7. HFile文件是否太多？</h5><p>HBase读取数据通常首先会到Memstore和BlockCache中检索（读取最近写入数据&amp;热点数据），如果查找不到就会到文件中检索。HBase的类LSM结构会导致每个store包含多数HFile文件，文件越多，检索所需的IO次数必然越多，读取延迟也就越高。文件数量通常取决于Compaction的执行策略，一般和两个配置参数有关：<code>hbase.hstore.compactionThreshold</code>和<code>hbase.hstore.compaction.max.size</code>，前者表示一个store中的文件数超过多少就应该进行合并，后者表示参数合并的文件大小最大是多少，超过此大小的文件不能参与合并。这两个参数不能设置太’松’（前者不能设置太大，后者不能设置太小），导致Compaction合并文件的实际效果不明显，进而很多文件得不到合并。这样就会导致HFile文件数变多。</p>
+<p>观察确认：观察RegionServer级别以及Region级别的storefile数，确认HFile文件是否过多</p>
+<p>优化建议：<code>hbase.hstore.compactionThreshold</code>设置不能太大，默认是3个；</p>
+<p>设置需要根据Region大小确定，通常可以简单的认为<code>hbase.hstore.compaction.max.size = RegionSize / hbase.hstore.compactionThreshold</code></p>
+<h5 id="8-Compaction是否消耗系统资源过多？"><a href="#8-Compaction是否消耗系统资源过多？" class="headerlink" title="8. Compaction是否消耗系统资源过多？"></a>8. Compaction是否消耗系统资源过多？</h5><p>Compaction是将小文件合并为大文件，提高后续业务随机读性能，但是也会带来IO放大以及带宽消耗问题（数据远程读取以及三副本写入都会消耗系统带宽）。正常配置情况下Minor Compaction并不会带来很大的系统资源消耗，除非因为配置不合理导致Minor Compaction太过频繁，或者Region设置太大情况下发生Major Compaction。</p>
+<p>观察确认：观察系统IO资源以及带宽资源使用情况，再观察Compaction队列长度，确认是否由于Compaction导致系统资源消耗过多</p>
+<p>优化建议：</p>
+<p>（1）Minor Compaction设置：<code>hbase.hstore.compactionThreshold</code>设置不能太小，又不能设置太大，因此建议设置为5～6；<code>hbase.hstore.compaction.max.size = RegionSize / hbase.hstore.compactionThreshold</code></p>
+<p>（2）Major Compaction设置：大Region读延迟敏感业务（ 100G以上）通常不建议开启自动Major Compaction，手动低峰期触发。小Region或者延迟不敏感业务可以开启Major Compaction，但建议限制流量；</p>
+<h4 id="HBase列族设计优化"><a href="#HBase列族设计优化" class="headerlink" title="HBase列族设计优化"></a>HBase列族设计优化</h4><h5 id="9-Bloomfilter是否设置？是否设置合理？"><a href="#9-Bloomfilter是否设置？是否设置合理？" class="headerlink" title="9. Bloomfilter是否设置？是否设置合理？"></a>9. Bloomfilter是否设置？是否设置合理？</h5><p>Bloomfilter主要用来过滤不存在待检索RowKey或者Row-Col的HFile文件，避免无用的IO操作。它会告诉你在这个HFile文件中是否可能存在待检索的KV，如果不存在，就可以不用消耗IO打开文件进行seek。很显然，通过设置Bloomfilter可以提升随机读写的性能。</p>
+<p>Bloomfilter取值有两个，row以及rowcol，需要根据业务来确定具体使用哪种。如果业务大多数随机查询仅仅使用row作为查询条件，Bloomfilter一定要设置为row，否则如果大多数随机查询使用row+cf作为查询条件，Bloomfilter需要设置为rowcol。如果不确定业务查询类型，设置为row。</p>
+<p><strong>优化建议：任何业务都应该设置Bloomfilter，通常设置为row就可以，除非确认业务随机查询类型为row+cf，可以设置为rowcol</strong></p>
+<h4 id="HDFS相关优化"><a href="#HDFS相关优化" class="headerlink" title="HDFS相关优化"></a>HDFS相关优化</h4><h5 id="10-Short-Circuit-Local-Read功能是否开启？"><a href="#10-Short-Circuit-Local-Read功能是否开启？" class="headerlink" title="10. Short-Circuit Local Read功能是否开启？"></a>10. Short-Circuit Local Read功能是否开启？</h5><p>当前HDFS读取数据都需要经过DataNode，客户端会向DataNode发送读取数据的请求，DataNode接受到请求之后从硬盘中将文件读出来，再通过TPC发送给客户端。Short Circuit策略允许客户端绕过DataNode直接读取本地数据。（具体原理参考<a href="http://blog.cloudera.com/blog/2013/08/how-improved-short-circuit-local-reads-bring-better-performance-and-security-to-hadoop/" target="_blank" rel="noopener">此处</a>）</p>
+<p><strong>优化建议：开启Short Circuit Local Read功能</strong></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330111006.png" alt=""></p>
+<h5 id="11-Hedged-Read功能是否开启？"><a href="#11-Hedged-Read功能是否开启？" class="headerlink" title="11. Hedged Read功能是否开启？"></a>11. Hedged Read功能是否开启？</h5><p>优化原理：HBase数据在HDFS中一般都会存储三份，而且优先会通过Short-Circuit Local Read功能尝试本地读。但是在某些特殊情况下，有可能会出现因为磁盘问题或者网络问题引起的短时间本地读取失败，为了应对这类问题，社区开发者提出了补偿重试机制 – Hedged Read。该机制基本工作原理为：客户端发起一个本地读，一旦一段时间之后还没有返回，客户端将会向其他DataNode发送相同数据的请求。哪一个请求先返回，另一个就会被丢弃。 </p>
+<p><strong>优化建议：开启Hedged Read功能</strong></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330111547.png" alt=""></p>
+<ul>
+<li>def.client.hedged.read.threadpool.size：默认值为0。指定有多少线程用于服务hedged reads。如果此值设置为0（默认），则hedged reads为disabled状态</li>
+<li>dfs.client.hedged.read.threshold.millis：默认为500（0.5秒）：在spawning 第二个线程前，等待的时间。</li>
+</ul>
+<blockquote>
+<p>注意的是：hedged reads 在HDFS中的功能，类似于MapReduce中的speculative execution：需要消耗额外的资源。例如，根据集群的负载与设定，它可能需要触发很多额外的读操作，且大部分是发送到远端的block replicas。产生的额外的I/O、以及网络可能会对集群性能造成较大影响。对此，需要在生产环境中的负载进行测试，以决定是否使用此功能。</p>
+</blockquote>
+<h5 id="12-数据本地率是否太低？"><a href="#12-数据本地率是否太低？" class="headerlink" title="12. 数据本地率是否太低？"></a>12. 数据本地率是否太低？</h5><p>数据本地率：HDFS数据通常存储三份，假如当前RegionA处于Node1上，数据a写入的时候三副本为(Node1,Node2,Node3)，数据b写入三副本是(Node1,Node4,Node5)，数据c写入三副本(Node1,Node3,Node5)，可以看出来所有数据写入本地Node1肯定会写一份，数据都在本地可以读到，因此数据本地率是100%。现在假设RegionA被迁移到了Node2上，只有数据a在该节点上，其他数据（b和c）读取只能远程跨节点读，本地率就为33%（假设a，b和c的数据大小相同）。</p>
+<p>优化原理：数据本地率太低很显然会产生大量的跨网络IO请求，必然会导致读请求延迟较高，因此提高数据本地率可以有效优化随机读性能。数据本地率低的原因一般是因为Region迁移（自动balance开启、RegionServer宕机迁移、手动迁移等）,因此一方面可以通过避免Region无故迁移来保持数据本地率，另一方面如果数据本地率很低，也可以通过执行major_compact提升数据本地率到100%。</p>
+<p><strong>优化建议：避免Region无故迁移，比如关闭自动balance、RS宕机及时拉起并迁回飘走的Region等；在业务低峰期执行major_compact提升数据本地率</strong></p>
+<h4 id="HBase读性能优化归纳"><a href="#HBase读性能优化归纳" class="headerlink" title="HBase读性能优化归纳"></a>HBase读性能优化归纳</h4><p>在本文开始的时候提到读延迟较大无非三种常见的表象，单个业务慢、集群随机读慢以及某个业务随机读之后其他业务受到影响导致随机读延迟很大。了解完常见的可能导致读延迟较大的一些问题之后，我们将这些问题进行如下归类，读者可以在看到现象之后在对应的问题列表中进行具体定位：  </p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330104752.png" alt=""></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330104813.png" alt=""></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330104828.png" alt=""></p>
+<hr>
+<h3 id="2-写优化"><a href="#2-写优化" class="headerlink" title="2 写优化"></a>2 写优化</h3><p>摘录修改自<a href="https://www.jianshu.com/p/ea06d3ca97e8" target="_blank" rel="noopener">Hbase—优化之写性能优化</a></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330112521.png" alt=""></p>
+<h4 id="写性能优化切入点"><a href="#写性能优化切入点" class="headerlink" title="写性能优化切入点"></a>写性能优化切入点</h4><h5 id="1-是否需要写WAL？"><a href="#1-是否需要写WAL？" class="headerlink" title="1. 是否需要写WAL？"></a>1. 是否需要写WAL？</h5><p>数据写入流程可以理解为<strong>一次顺序写WAL+一次写缓存</strong>，通常情况下写缓存延迟很低，因此提升写性能就只能从WAL入手。WAL机制一方面是为了确保数据即使写入缓存丢失也可以恢复，另一方面是为了集群之间异步复制。默认WAL机制开启且使用同步机制写入WAL。首先考虑业务是否需要写WAL，通常情况下大多数业务都会开启WAL机制（默认），但是对于部分业务可能并不特别关心异常情况下部分数据的丢失，而更关心数据写入吞吐量，比如某些推荐业务，这类业务即使丢失一部分用户行为数据可能对推荐结果并不构成很大影响，但是对于写入吞吐量要求很高，不能造成数据队列阻塞。这种场景下可以考虑关闭WAL写入，写入吞吐量可以提升2x~3x。退而求其次，有些业务不能接受不写WAL，但可以接受WAL异步写入，也是可以考虑优化的，通常也会带来1x～2x的性能提升。</p>
+<p><strong>优化推荐：根据业务关注点在WAL机制与写入吞吐量之间做出选择</strong></p>
+<p>方法：不开启WAL机制，手工刷新memstore的数据落地</p>
+<figure class="highlight arduino"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//禁用WAL机制</span></span><br><span class="line"><span class="built_in">put</span>.setDurability(Durability.SKIP_WAL)</span><br></pre></td></tr></table></figure>
+<p>在数据写操作之后，调用flushTable操作，代替WAL机制</p>
+<h5 id="2-Put是否可以同步批量提交？"><a href="#2-Put是否可以同步批量提交？" class="headerlink" title="2. Put是否可以同步批量提交？"></a>2. Put是否可以同步批量提交？</h5><p>HBase分别提供了单条put以及批量put的API接口，使用批量put接口可以减少客户端到RegionServer之间的RPC连接数，提高写入性能。另外需要注意的是，批量put请求要么全部成功返回，要么抛出异常。</p>
+<p><strong>优化建议：使用批量put进行写入请求</strong></p>
+<h5 id="3-Put是否可以异步批量提交？"><a href="#3-Put是否可以异步批量提交？" class="headerlink" title="3. Put是否可以异步批量提交？"></a>3. Put是否可以异步批量提交？</h5><p>业务如果可以接受异常情况下少量数据丢失的话，还可以使用异步批量提交的方式提交请求。提交分为两阶段执行：用户提交写请求之后，数据会写入客户端缓存，并返回用户写入成功；当客户端缓存达到阈值（默认2M）之后批量提交给RegionServer。需要注意的是，在某些情况下客户端异常的情况下缓存数据有可能丢失。</p>
+<p><strong>优化建议：在业务可以接受的情况下开启异步批量提交</strong></p>
+<p>使用方式：setAutoFlush(false)</p>
+<h5 id="4-Region是否太少？"><a href="#4-Region是否太少？" class="headerlink" title="4. Region是否太少？"></a>4. Region是否太少？</h5><p>当前集群中表的Region个数如果小于RegionServer个数，即Num(Region of Table) &lt; Num(RegionServer)，可以考虑切分Region并尽可能分布到不同RegionServer来提高系统请求并发度，如果Num(Region of Table) &gt; Num(RegionServer)，再增加Region个数效果并不明显。</p>
+<p><strong>优化建议：在Num(Region of Table) &lt; Num(RegionServer)的场景下切分部分请求负载高的Region并迁移到其他RegionServer</strong></p>
+<h5 id="5-写入请求是否不均衡？"><a href="#5-写入请求是否不均衡？" class="headerlink" title="5. 写入请求是否不均衡？"></a>5. 写入请求是否不均衡？</h5><p>另一个需要考虑的问题是写入请求是否均衡，如果不均衡，一方面会导致系统并发度较低，另一方面也有可能造成部分节点负载很高，进而影响其他业务</p>
+<p><strong>优化建议：检查RowKey设计以及预分区策略，保证写入请求均衡</strong></p>
+<h5 id="6-写入KeyValue数据是否太大？"><a href="#6-写入KeyValue数据是否太大？" class="headerlink" title="6. 写入KeyValue数据是否太大？"></a>6. 写入KeyValue数据是否太大？</h5><p>KeyValue大小对写入性能的影响巨大，一旦遇到写入性能比较差的情况，需要考虑是否由于写入KeyValue数据太大导致</p>
+<p><strong>优化建议：尽可能控制KeyValue的长度</strong></p>
+<h4 id="写异常问题检查点"><a href="#写异常问题检查点" class="headerlink" title="写异常问题检查点"></a>写异常问题检查点</h4><h5 id="1-Memstore设置是否会触发Region级别或者RegionServer级别flush操作？"><a href="#1-Memstore设置是否会触发Region级别或者RegionServer级别flush操作？" class="headerlink" title="1.Memstore设置是否会触发Region级别或者RegionServer级别flush操作？"></a>1.Memstore设置是否会触发Region级别或者RegionServer级别flush操作？</h5><p>HBase设定一旦整个RegionServer上所有Memstore占用内存大小总和大于配置文件中upperlimit时，系统就会执行RegionServer级别flush，flush算法会首先按照Region大小进行排序，再按照该顺序依次进行flush，直至总Memstore大小低至lowerlimit。这种flush通常会block较长时间，在日志中会发现“Memstore is above high water mark and block 7452 ms”，表示这次flush将会阻塞7s左右</p>
+<ul>
+<li>如果RegionServer上Region较多，而Memstore总大小设置的很小（JVM设置较小或者upper.limit设置较小），就会触发RegionServer级别flush</li>
+<li>如果列族设置过多，会导致一个Region中包含很多Memstore，导致更容易触到高水位upperlimit</li>
+</ul>
+<h5 id="2-Store中HFile数量是否大于配置参数blockingStoreFile"><a href="#2-Store中HFile数量是否大于配置参数blockingStoreFile" class="headerlink" title="2.Store中HFile数量是否大于配置参数blockingStoreFile?"></a>2.Store中HFile数量是否大于配置参数blockingStoreFile?</h5><p>对于数据写入很快的集群，还需要特别关注一个参数：hbase.hstore.blockingStoreFiles，此参数表示如果当前hstore中文件数大于该值，系统将会强制执行compaction操作进行文件合并，合并的过程会阻塞整个hstore的写入。通常情况下该场景发生在数据写入很快的情况下，在日志中可以发现”Waited 3722ms on a compaction to clean up ‘too many store  files“</p>
+<ul>
+<li>hbase.hstore.compactionThreshold表示启动compaction的最低阈值，该值不能太大，否则会积累太多文件，一般建议设置为5～8左右</li>
+<li>hbase.hstore.blockingStoreFiles默认设置为7，可以适当调大一些。</li>
+</ul>
+<hr>
+<blockquote>
+<p><strong>接下来简单介绍HBase之后版本对写性能优化的两点核心改进：</strong></p>
+</blockquote>
+<ul>
+<li><p><strong>Utilize Flash storage for WAL(HBASE-12848)</strong></p>
+<ul>
+<li>这个特性意味着可以将WAL单独置于SSD上，这样即使在默认情况下（WALSync），写性能也会有很大的提升。需要注意的是，该特性建立在HDFS 2.6.0+的基础上，HDFS以前版本不支持该特性。具体可以参考官方jira：<a href="https://links.jianshu.com/go?to=https%3A%2F%2Fissues.apache.org%2Fjira%2Fbrowse%2FHBASE-12848" target="_blank" rel="noopener">https://issues.apache.org/jira/browse/HBASE-12848</a> </li>
+</ul>
+</li>
+<li><p><strong>Multiple WALs(HBASE-14457)</strong></p>
+<ul>
+<li>该特性也是对WAL进行改造，当前WAL设计为一个RegionServer上所有Region共享一个WAL，可以想象在写入吞吐量较高的时候必然存在资源竞争，降低整体性能。针对这个问题，社区小伙伴（阿里巴巴大神）提出Multiple WALs机制，管理员可以为每个Namespace下的所有表设置一个共享WAL，通过这种方式，写性能大约可以提升20%～40%左右。具体可以参考官方jira:<a href="https://links.jianshu.com/go?to=https%3A%2F%2Fissues.apache.org%2Fjira%2Fbrowse%2FHBASE-14457" target="_blank" rel="noopener">https://issues.apache.org/jira/browse/HBASE-14457</a></li>
+</ul>
+</li>
+</ul>
+
+                
+                <hr>
+                <!-- Pager -->
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/04/11/Flink-Apache-Flink：概念、架构及原理/" data-toggle="tooltip" data-placement="top" title="Apache Flink：概念、架构及原理">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/03/31/杂记-Hexo添加图片放大功能/" data-toggle="tooltip" data-placement="top" title="Hexo添加图片放大功能">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                <!-- tip start -->
+                
+                <div class="comment_notes_blank"></div>
+                <div class="visitor_notice">
+                    <img 
+                        src="/img/notice.png" 
+                        alt="notice"
+                        title="notice"/>
+                    <p class="notice">
+                        除非注明，本博文章均为原创，转载请以链接形式标明本文地址.
+                    </p>
+                </div>
+                
+
+                
+                <div class="comment_notes">
+                    <p>
+                        
+                    </p>
+                </div>
+                
+                <!-- tip end -->
+
+                <!-- Music start-->
+                
+                <!-- Music end -->
+
+                <!-- Sharing -->
+                
+                <!-- Sharing -->
+
+                <!-- gitment start -->
+                
+                <!-- gitment end -->
+			
+			<!-- valine_comments start -->	
+						
+			<!-- valine_comments end -->
+			
+			<!-- 来必力City版安装代码 -->
+                
+                <hr>
+                <div id="lv-container" data-id="city" data-uid="MTAyMC80OTY0OC8yNjEzOQ==">
+                    <script type="text/javascript">
+                   (function(d, s) {
+                       var j, e = d.getElementsByTagName(s)[0];
+
+                       if (typeof LivereTower === 'function') { return; }
+
+                       j = d.createElement(s);
+                       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+                       j.async = true;
+
+                       e.parentNode.insertBefore(j, e);
+                   })(document, 'script');
+                    </script>
+                <noscript> 为正常使用来必力评论功能请激活JavaScript</noscript>
+                </div>
+                
+                <!-- City版安装代码已完成 -->
+
+            </div>
+            
+
+			
+            <!-- Tabe of Content -->
+            <!-- Table of Contents -->
+
+    
+      <aside id="sidebar">
+        <div id="toc" class="toc-article">
+        <strong class="toc-title">Contents</strong>
+        
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#HBase服务端优化不完全笔记"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">HBase服务端优化不完全笔记</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#1-Region规划"><span class="toc-nav-number">1.1.</span> <span class="toc-nav-text">1 Region规划</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#2-Memstore刷写配置"><span class="toc-nav-number">1.2.</span> <span class="toc-nav-text">2 Memstore刷写配置</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#3-其他HBase服务端配置"><span class="toc-nav-number">1.3.</span> <span class="toc-nav-text">3 其他HBase服务端配置</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#应用层响应配置"><span class="toc-nav-number">1.3.0.1.</span> <span class="toc-nav-text">应用层响应配置</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#HDFS相关配置"><span class="toc-nav-number">1.3.0.2.</span> <span class="toc-nav-text">HDFS相关配置</span></a></li></ol></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#4-优化点思考"><span class="toc-nav-number">1.4.</span> <span class="toc-nav-text">4 优化点思考</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#1-读优化"><span class="toc-nav-number">1.4.1.</span> <span class="toc-nav-text">1 读优化</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#HBase客户端优化"><span class="toc-nav-number">1.4.1.1.</span> <span class="toc-nav-text">HBase客户端优化</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#1-Scan缓存是否设置合理？"><span class="toc-nav-number">1.4.1.1.1.</span> <span class="toc-nav-text">1. Scan缓存是否设置合理？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#2-Get请求是否可以使用批量请求？"><span class="toc-nav-number">1.4.1.1.2.</span> <span class="toc-nav-text">2. Get请求是否可以使用批量请求？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#3-请求是否可以显示指定列族或者列？"><span class="toc-nav-number">1.4.1.1.3.</span> <span class="toc-nav-text">3. 请求是否可以显示指定列族或者列？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#4-离线批量读取请求是否设置禁止缓存？"><span class="toc-nav-number">1.4.1.1.4.</span> <span class="toc-nav-text">4. 离线批量读取请求是否设置禁止缓存？</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#HBase服务器端优化"><span class="toc-nav-number">1.4.1.2.</span> <span class="toc-nav-text">HBase服务器端优化</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#5-读请求是否均衡？"><span class="toc-nav-number">1.4.1.2.1.</span> <span class="toc-nav-text">5. 读请求是否均衡？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#6-BlockCache是否设置合理？"><span class="toc-nav-number">1.4.1.2.2.</span> <span class="toc-nav-text">6. BlockCache是否设置合理？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#7-HFile文件是否太多？"><span class="toc-nav-number">1.4.1.2.3.</span> <span class="toc-nav-text">7. HFile文件是否太多？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#8-Compaction是否消耗系统资源过多？"><span class="toc-nav-number">1.4.1.2.4.</span> <span class="toc-nav-text">8. Compaction是否消耗系统资源过多？</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#HBase列族设计优化"><span class="toc-nav-number">1.4.1.3.</span> <span class="toc-nav-text">HBase列族设计优化</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#9-Bloomfilter是否设置？是否设置合理？"><span class="toc-nav-number">1.4.1.3.1.</span> <span class="toc-nav-text">9. Bloomfilter是否设置？是否设置合理？</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#HDFS相关优化"><span class="toc-nav-number">1.4.1.4.</span> <span class="toc-nav-text">HDFS相关优化</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#10-Short-Circuit-Local-Read功能是否开启？"><span class="toc-nav-number">1.4.1.4.1.</span> <span class="toc-nav-text">10. Short-Circuit Local Read功能是否开启？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#11-Hedged-Read功能是否开启？"><span class="toc-nav-number">1.4.1.4.2.</span> <span class="toc-nav-text">11. Hedged Read功能是否开启？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#12-数据本地率是否太低？"><span class="toc-nav-number">1.4.1.4.3.</span> <span class="toc-nav-text">12. 数据本地率是否太低？</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#HBase读性能优化归纳"><span class="toc-nav-number">1.4.1.5.</span> <span class="toc-nav-text">HBase读性能优化归纳</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#2-写优化"><span class="toc-nav-number">1.4.2.</span> <span class="toc-nav-text">2 写优化</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#写性能优化切入点"><span class="toc-nav-number">1.4.2.1.</span> <span class="toc-nav-text">写性能优化切入点</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#1-是否需要写WAL？"><span class="toc-nav-number">1.4.2.1.1.</span> <span class="toc-nav-text">1. 是否需要写WAL？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#2-Put是否可以同步批量提交？"><span class="toc-nav-number">1.4.2.1.2.</span> <span class="toc-nav-text">2. Put是否可以同步批量提交？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#3-Put是否可以异步批量提交？"><span class="toc-nav-number">1.4.2.1.3.</span> <span class="toc-nav-text">3. Put是否可以异步批量提交？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#4-Region是否太少？"><span class="toc-nav-number">1.4.2.1.4.</span> <span class="toc-nav-text">4. Region是否太少？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#5-写入请求是否不均衡？"><span class="toc-nav-number">1.4.2.1.5.</span> <span class="toc-nav-text">5. 写入请求是否不均衡？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#6-写入KeyValue数据是否太大？"><span class="toc-nav-number">1.4.2.1.6.</span> <span class="toc-nav-text">6. 写入KeyValue数据是否太大？</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#写异常问题检查点"><span class="toc-nav-number">1.4.2.2.</span> <span class="toc-nav-text">写异常问题检查点</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#1-Memstore设置是否会触发Region级别或者RegionServer级别flush操作？"><span class="toc-nav-number">1.4.2.2.1.</span> <span class="toc-nav-text">1.Memstore设置是否会触发Region级别或者RegionServer级别flush操作？</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#2-Store中HFile数量是否大于配置参数blockingStoreFile"><span class="toc-nav-number">1.4.2.2.2.</span> <span class="toc-nav-text">2.Store中HFile数量是否大于配置参数blockingStoreFile?</span></a></li></ol></li></ol></li></ol></li></ol></li></ol>
+        
+        </div>
+      </aside>
+    
+
+                
+            <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#HBase" title="HBase">HBase</a>
+                        
+                          <a class="tag" href="/tags/#优化" title="优化">优化</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'left',
+          icon: 'ℬ'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+
+
+<style  type="text/css">
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; GY 2021 
+                    <br>
+                    Powered by 
+                    <a href="https://github.com/dusign/hexo-theme-snail" target="_blank" rel="noopener">
+                        <i>hexo-theme-snail</i>
+                    </a> | 
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0"
+                        width="100px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=dusign&repo=hexo-theme-snail&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- Search -->
+
+<script src="/js/search.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 百度站长 -->
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://gaothink.top/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Search -->
+
+    <script type="text/javascript">      
+        var search_path = "search.xml";
+        if (search_path.length == 0) {
+            search_path = "search.xml";
+        }
+    var path = "/" + search_path;
+    searchFunc(path, 'local-search-input', 'local-search-result');
+    </script>
+
+
+<!-- busuanzi -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+	<a id="rocket" href="#top" class=""></a>
+	<script type="text/javascript" src="/js/totop.js?v=1.0.0" async=""></script>
+    <script type="text/javascript" src="/js/toc.js?v=1.0.0" async=""></script>
+	
+    
+        <!-- background effects line -->
+        
+
+        
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+        
+
+        <!-- background effects end -->
+    
+
+    <!--<script size="50" alpha='0.3' zIndex="-999" src="/js/ribbonStatic.js"></script>-->
+    
+        <script src="/js/ribbonDynamic.js"></script>
+    
+	
+	
+        <script type="text/javascript" src="/js/fancybox/jquery.fancybox.min.js"></script>
+        <script type="text/javascript" src="/js/wrapImage.js"></script>
+    
+	
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>

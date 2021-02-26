@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="baidu-site-verification" content="uHZGT15IXQ" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="GaoThink·思考志">
+    <meta name="keyword"  content="大数据,Bigdata,Linux,CDH">
+    <link rel="shortcut icon" href="/img/ironman-draw.png">
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <!--<link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>-->
+   
+	<title>
+        
+          Apache Flink：时间戳与水印 - GaoThink·思考志
+        
+    </title>
+
+    <link rel="canonical" href="http://gaothink.top/2020/06/01/Flink-Apache-Flink：TimeStamp-And-WaterMark/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS --> 
+    
+        
+<link rel="stylesheet" href="/css/dusign-light.css">
+
+        
+<link rel="stylesheet" href="/css/dusign-common-light.css">
+
+        
+<link rel="stylesheet" href="/css/font-awesome.css">
+
+        
+<link rel="stylesheet" href="/css/toc.css">
+
+        <!-- background effects end -->
+    
+    
+	<!-- fancybox support -->
+    
+      
+<link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css">
+
+    
+	
+    <!-- Pygments Highlight CSS -->
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+
+    
+<link rel="stylesheet" href="/css/widget.css">
+
+
+    
+<link rel="stylesheet" href="/css/rocket.css">
+
+
+    
+<link rel="stylesheet" href="/css/signature.css">
+
+
+    
+<link rel="stylesheet" href="/css/fonts.googleapis.css">
+
+
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <!-- photography -->
+    
+<link rel="stylesheet" href="/css/photography.css">
+
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+	
+	
+	<!-- Baidu Tongji -->
+    
+    <script>
+        // dynamic User by Hux
+        var _baId = '3c93829ba3b988ba61d1e9a4688967d3';
+    
+        // Originial
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "//hm.baidu.com/hm.js?" + _baId;
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+	
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- background effects start -->
+    
+    <!-- background effects end -->
+
+	<!-- Modified by Yu-Hsuan Yen -->
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        
+            
+                background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('')
+                /*post*/
+            
+        
+    }
+    
+</style>
+
+<header class="intro-header" >
+    <!-- Signature -->
+    <div id="signature">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                
+                    <div class="post-heading">
+                        <div class="tags">
+                            
+                              <a class="tag" href="/tags/#Flink" title="Flink">Flink</a>
+                            
+                        </div>
+                        <h1>Apache Flink：时间戳与水印</h1>
+                        <h2 class="subheading"></h2>
+                        <span class="meta">
+                            Posted by GY on
+                            2020-06-01
+                        </span>
+
+                        
+                            <div class="blank_box"></div>
+                            <span class="meta">
+                                Words <span class="post-count">2.8k</span> and
+                                Reading Time <span class="post-count">10</span> Minutes
+                            </span>
+                            <div class="blank_box"></div>
+                            <!-- 不蒜子统计 start -->
+                            <span class="meta">
+                                Viewed <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span> Times
+                            </span>
+                            <!-- 不蒜子统计 end -->
+                        
+
+                    </div>
+                
+
+                </div>
+            </div>
+        </div>      
+    </div>
+
+    
+    <div class="waveWrapper">
+        <div class="wave wave_before" style="background-image: url('/img/wave-light.png')"></div>
+        <div class="wave wave_after" style="background-image: url('/img/wave-light.png')"></div>
+    </div>
+    
+</header>
+
+	
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">GaoThink</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archive/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/categories/">Categories</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h1 id="Apache-Flink：时间戳与水印"><a href="#Apache-Flink：时间戳与水印" class="headerlink" title="Apache Flink：时间戳与水印"></a>Apache Flink：时间戳与水印</h1><p>Flink基于EventTime和WaterMark处理乱序事件和晚到的数据，是常见的任务场景</p>
+<p>对于TimeStamp 和 WaterMark 这两个Flink关键词，很长时间都是稀里糊涂，傻傻分不清楚，只能按照模板去写，不明其中所以，So ····  在此我们重新整理一下相关内容</p>
+<h2 id="Flink-时间语义"><a href="#Flink-时间语义" class="headerlink" title="Flink 时间语义"></a>Flink 时间语义</h2><p>在 Flink 中 Time 可以分为三种Event-Time，Processing-Time 以及 Ingestion-Time，三者的关系我们可以从下图中得知：</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601145432.png" style="width:600px"/></p>
+<p>其核心是 <strong>Processing Time</strong> 和 <strong>Event Time（Row Time）</strong></p>
+<p>Processing Time 是来模拟我们真实世界的时间，其实就算是处理数据的节点本地时间也不一定就是完完全全的我们真实世界的时间，所以说它是用来模拟真实世界的时间。而 Event Time 是数据世界的时间，就是我们要处理的数据流世界里面的时间。关于他们的获取方式，Process Time 是通过直接去调用本地机器的时间，而 Event Time则是根据每一条处理记录所携带的时间戳来判定。</p>
+<p>相对而言的 ProcessingTime 处理起来更加的简单，而 Event Time 要更麻烦一些。而在使用Processing Time 的时候，我们得到的处理结果（或者说流处理应用的内部状态）是不确定的。而因为在 Flink 内部对 Event Time 做了各种保障，<strong>使用 EventTime 的情况下，无论重放数据多少次，都能得到一个相对确定可重现的结果</strong>。</p>
+<p>因此在判断应该使用 Processing Time 还是 Event Time 的时候，可以遵循一个原则：<strong>当你的应用遇到某些问题要从上一个 checkpoint 或者 savepoint 进行重放，是不是希望结果完全相同</strong>。如果希望结果完全相同，就只能用Event Time；如果接受结果不同，则可以用 Processing Time。</p>
+<p>Processing Time 的一个常见的用途是，我们要根据现实时间来统计整个系统的吞吐，比如要计算现实时间一个小时处理了多少条数据，这种情况只能使用Processing Time。</p>
+<hr>
+<h2 id="Window划分"><a href="#Window划分" class="headerlink" title="Window划分"></a>Window划分</h2><p>window的设定无关数据本身，而是系统定义好了的。</p>
+<p>window是Flink中划分数据一个基本单位，window的划分方式是固定的，<strong>默认会根据自然时间划分window</strong>，并且划分方式是前闭后开。</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>window划分</th>
+<th>w1</th>
+<th>w2</th>
+<th>w3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3s</td>
+<td>[00:00:00~00:00:03)</td>
+<td>[00:00:03~00:00:06)</td>
+<td>[00:00:06~00:00:09)</td>
+</tr>
+<tr>
+<td>5s</td>
+<td>[00:00:00~00:00:05)</td>
+<td>[00:00:05~00:00:10)</td>
+<td>[00:00:10~00:00:15)</td>
+</tr>
+<tr>
+<td>10s</td>
+<td>[00:00:00~00:00:10)</td>
+<td>[00:00:10~00:00:20)</td>
+<td>[00:00:20~00:00:30)</td>
+</tr>
+<tr>
+<td>1min</td>
+<td>[00:00:00~00:01:00)</td>
+<td>[00:01:00~00:02:00)</td>
+<td>[00:02:00~00:03:00)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="Watermark水印"><a href="#Watermark水印" class="headerlink" title="Watermark水印"></a>Watermark水印</h2><p>那我们怎么保证基于 event-time 的窗口在销毁的时候，已经处理完了所有的数据呢？这就是 watermark 的功能所在。watermark 会携带一个单调递增的时间戳 t，watermark(t) 表示所有时间戳不大于 t 的数据都已经到来了，未来小于等于t的数据不会再来，因此可以放心地触发和销毁窗口了。下图中给了一个乱序数据流中的 watermark 例子</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601203828.png"/></p>
+<hr>
+<h2 id="提取事件时间、产生水印"><a href="#提取事件时间、产生水印" class="headerlink" title="提取事件时间、产生水印"></a>提取事件时间、产生水印</h2><p>我们知道，流处理从事件产生，到流经source，再到operator，中间是有一个过程和时间的。虽然大部分情况下，流到operator的数据都是按照事件产生的时间顺序来的，但是也不排除由于网络、背压等原因，导致乱序的产生。但是对于超时数据，我们又不能无限期的等下去，必须要有个机制来保证一个特定的时间后，必须触发window去进行计算了。而这个特别的机制，就是watermark。</p>
+<p>Flink提供了统一的<code>DataStream.assignTimestampsAndWatermarks()</code>方法来提取事件时间并同时产生水印，毕竟它们在处理过程中是紧密联系的。</p>
+<p><code>assignTimestampsAndWatermarks()</code>方法接受的参数类型有<code>AssignerWithPeriodicWatermarks</code>和<code>AssignerWithPunctuatedWatermarks</code>两种，分别对应周期性水印和打点（即由事件本身的属性触发）水印，它们的类图如下所示。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601175911.png" style="width:800px"/></p>
+<p><strong>Watermark是用于处理乱序事件的，而正确的处理乱序事件，通常用watermark机制结合window来实现</strong></p>
+<h3 id="周期性水印-WithPeriodicWatermarks"><a href="#周期性水印-WithPeriodicWatermarks" class="headerlink" title="周期性水印(WithPeriodicWatermarks)"></a>周期性水印(WithPeriodicWatermarks)</h3><p>顾名思义，使用<code>AssignerWithPeriodicWatermarks</code>时，水印是周期性产生的。该周期默认为200ms，也能通过<code>ExecutionConfig.setAutoWatermarkInterval()</code>方法来指定新的周期。</p>
+<p>我们需要通过实现<code>extractTimestamp()</code>方法来提取事件时间，实现<code>getCurrentWatermark()</code>方法产生水印。但好在Flink已经提供了3种内置的实现类，所以我们直接用就可以了，省事。</p>
+<h4 id="AscendingTimestampExtractor"><a href="#AscendingTimestampExtractor" class="headerlink" title="AscendingTimestampExtractor"></a>AscendingTimestampExtractor</h4><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601192227.png"/></p>
+<p><code>AscendingTimestampExtractor</code>产生的时间戳和水印必须是单调非递减的，用户通过覆写<code>extractAscendingTimestamp()</code>方法抽取时间戳。如果产生了递减的时间戳，就要使用名为MonotonyViolationHandler的组件处理异常，有两种方式：打印警告日志（默认）和抛出RuntimeException。</p>
+<p>单调递增的事件时间并不太符合实际情况，所以<code>AscendingTimestampExtractor</code>用得不多。</p>
+<h4 id="BoundedOutOfOrdernessTimestampExtractor"><a href="#BoundedOutOfOrdernessTimestampExtractor" class="headerlink" title="BoundedOutOfOrdernessTimestampExtractor"></a>BoundedOutOfOrdernessTimestampExtractor</h4><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601192348.png" style="width:800px"/></p>
+<p>可以设置 <strong>允许固定最大时间范围内的延迟</strong>，比如固定时间间隔中周期性发送数据的数据源，因为数据发送的间隔是固定的，所以可以设置一个固定的最大允许延迟时间</p>
+<p>当然，延迟时间的长度要根据实际环境谨慎设定，设定得太短会丢较多的数据，设定得太长会导致窗口触发延迟，实时性减弱。</p>
+<p>我们也可以自己实现一个BoundedOutOfOrdernessTimestampExtractor</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601171810.png" style="width:800px"/></p>
+<h4 id="IngestionTimeExtractor"><a href="#IngestionTimeExtractor" class="headerlink" title="IngestionTimeExtractor"></a>IngestionTimeExtractor</h4><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601192506.png" style="width:800px"/></p>
+<p>IngestionTimeExtractor基于当前系统时钟生成时间戳和水印，其实就是Flink三大时间特征里的摄入时间了。</p>
+<h3 id="打点水印-AssignerWithPunctuatedWatermarks"><a href="#打点水印-AssignerWithPunctuatedWatermarks" class="headerlink" title="打点水印(AssignerWithPunctuatedWatermarks)"></a>打点水印(AssignerWithPunctuatedWatermarks)</h3><p>打点水印比周期性水印用的要少不少，并且Flink没有内置的实现，那么就写个最简单的栗子吧！</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601193448.png" style="width:800px"/></p>
+<p><code>AssignerWithPunctuatedWatermarks</code>适用于需要依赖于事件本身的某些属性决定是否发射水印的情况。我们实现<code>checkAndGetNextWatermark()</code>方法来产生水印，产生的时机完全由用户控制。上面例子中是收取到用户ID末位为0的数据时才发射。</p>
+<blockquote>
+<p>还有三点需要提醒：</p>
+<ul>
+<li>不管使用哪种方式产生水印，都不能过于频繁。因为Watermark对象是会全部流向下游的，也会实打实地占用内存，水印过多会造成系统性能下降。</li>
+<li>水印的生成要尽量早，一般是在接入Source之后就产生，或者在Source经过简单的变换（map、filter等）之后产生。</li>
+<li>如果需求方对事件时间carry的业务意义并不关心，可以直接使用处理时间，简单方便。</li>
+</ul>
+</blockquote>
+<hr>
+<h2 id="AllowedLateness介绍"><a href="#AllowedLateness介绍" class="headerlink" title="AllowedLateness介绍"></a>AllowedLateness介绍</h2><p><strong>allowedLateness只针对eventTime</strong>，因为processingTime不存在延时的情况。</p>
+<p>默认情况下，当watermark通过end-of-window之后，再有之前的数据到达时，这些数据会被删除。</p>
+<p>为了避免有些迟到的数据被删除，因此产生了allowedLateness的概念，使用allowedLateness延迟销毁窗口，允许有一段时间（也是以event time来衡量）来等待之前的数据到达，以便再次处理这些数据。。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601195219.png" style="width:600px"/></p>
+<p><strong>注意</strong>：对于trigger是默认的EventTimeTrigger的情况下，allowedLateness会再次触发窗口的计算，而之前触发的数据，会buffer起来，直到watermark超过end-of-window + allowedLateness的时间，窗口的数据及元数据信息才会被删除。再次计算就是DataFlow模型中的Accumulating的情况。</p>
+<p><strong>相关源码</strong></p>
+<p><code>org.apache.flink.streaming.api.datastream.WindowedStream</code></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200601200612.png" style="width:800px"/></p>
+<p>WindowedStream有两个参数跟Allowed Lateness相关</p>
+<p>一个是<strong>allowedLateness</strong>，用于指定允许元素迟到的时间长度</p>
+<p>一个是<strong>lateDataOutputTag</strong>，用于配置迟到元素的输出</p>
+<p>既然有了watermark了，为什么还要搞allowedLateness ??</p>
+<p>因为watermark是全局的，不止针对window计算，而allowedLateness让window函数能自己控制处理延迟数据的策略。</p>
+<hr>
+<h2 id="迟到数据处理"><a href="#迟到数据处理" class="headerlink" title="迟到数据处理"></a>迟到数据处理</h2><h4 id="将迟到数据丢弃"><a href="#将迟到数据丢弃" class="headerlink" title="将迟到数据丢弃"></a>将迟到数据丢弃</h4><p>如果不做其他操作，默认情况下迟到数据会被直接丢弃。</p>
+<h4 id="侧输出迟到数据"><a href="#侧输出迟到数据" class="headerlink" title="侧输出迟到数据"></a>侧输出迟到数据</h4><p>如果想对这些迟到数据处理，我们可以使用Flink的侧输出（Side Output）功能，将迟到数据发到某个特定的流上。后续我们可以根据业务逻辑的要求，对迟到的数据流进行处理。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200602134717.png" style="width:800px"/></p>
+<p>上面的代码将迟到的内容写进名为“late-elements”的<code>OutputTag</code>下，之后使用<code>getSideOutput</code>获取这些迟到的数据。</p>
+<h4 id="更新计算结果"><a href="#更新计算结果" class="headerlink" title="更新计算结果"></a>更新计算结果</h4><p>对于迟到数据，使用上面两种方法，都对计算结果的正确性有影响。如果将数据流发送到单独的侧输出，我们仍然需要完成单独的处理逻辑，相对比较复杂。更理想的情况是，将迟到数据重新进行一次，得到一个更新的结果。 <code>allowedLateness</code><strong>允许用户在Event Time下对某个窗口先得到一个结果，如果在一定时间内有迟到数据，迟到数据会和之前的数据一起重新被计算，以得到一个更准确的结果</strong>。使用这个功能时需要注意，原来窗口中的状态数据在窗口已经触发的情况下仍然会被保留，否则迟到数据到来后也无法与之前数据融合。另一方面，更新的结果要以一种合适的形式输出到外部系统，或者将原来结果覆盖，或者同时保存且有时间戳以表明来自更新后的计算。比如，我们的计算结果是一个键值对（Key-Value），我们可以把这个结果输出到Redis这样的KV数据库中，使用某些Reids命令，对于同一个Key下，旧的结果被新的结果所覆盖。</p>
+<p>如果不明确调用<code>allowedLateness</code>，默认的允许延迟的参数是0。如果对一个Processing Time下的程序使用<code>allowedLateness</code>，将引发异常。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200602132723.png"/></p>
+<p>在上面的代码中，我们设置的窗口为10秒，10秒结束后，窗口计算会被触发，生成第一个计算结果。<code>allowedLateness</code>设置窗口结束后还要等待长为lateness的时间，某个迟到元素的Event Time大于窗口结束时间但是小于结束时间+lateness，该元素仍然会被加入到该窗口中。每新到一个迟到数据，迟到数据被加入<code>ProcessWindowFunction</code>的缓存中，窗口的Trigger会触发一次FIRE，窗口函数被重新调用一次，计算结果得到一次更新。</p>
+<p>需要注意的是，会话窗口依赖Session gap来切分窗口，使用了<code>allowedLateness</code>可能会导致两个窗口合并成一个窗口。</p>
+<h4 id="与Watermarks同时使用的情况"><a href="#与Watermarks同时使用的情况" class="headerlink" title="与Watermarks同时使用的情况"></a>与Watermarks同时使用的情况</h4><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200602144542.png"/></p>
+<p><strong>Wrmark和AllowedLateness区别</strong></p>
+<ul>
+<li>watermark 通过additional的时间戳来控制窗口激活的时间，主要是为了解决数据乱序到达的问题</li>
+<li>allowedLateness 用来控制窗口的销毁时间，解决窗口触发后数据迟到后的问题</li>
+<li>在flink中我们经常使用watermark、allowedLateness 、 sideOutputLateData结合的方式处理数据保证窗口数据不丢失</li>
+</ul>
+<hr>
+<p>参考：</p>
+<p><a href="https://www.jianshu.com/p/c612e95a5028" target="_blank" rel="noopener">再谈Flink事件时间、水印和迟到数据处理</a></p>
+
+                
+                <hr>
+                <!-- Pager -->
+                <ul class="pager">
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/04/26/Flink-Flink-Context-简单了解/" data-toggle="tooltip" data-placement="top" title="Flink Context 简单了解">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                <!-- tip start -->
+                
+                <div class="comment_notes_blank"></div>
+                <div class="visitor_notice">
+                    <img 
+                        src="/img/notice.png" 
+                        alt="notice"
+                        title="notice"/>
+                    <p class="notice">
+                        除非注明，本博文章均为原创，转载请以链接形式标明本文地址.
+                    </p>
+                </div>
+                
+
+                
+                <div class="comment_notes">
+                    <p>
+                        
+                    </p>
+                </div>
+                
+                <!-- tip end -->
+
+                <!-- Music start-->
+                
+                <!-- Music end -->
+
+                <!-- Sharing -->
+                
+                <!-- Sharing -->
+
+                <!-- gitment start -->
+                
+                <!-- gitment end -->
+			
+			<!-- valine_comments start -->	
+						
+			<!-- valine_comments end -->
+			
+			<!-- 来必力City版安装代码 -->
+                
+                <hr>
+                <div id="lv-container" data-id="city" data-uid="MTAyMC80OTY0OC8yNjEzOQ==">
+                    <script type="text/javascript">
+                   (function(d, s) {
+                       var j, e = d.getElementsByTagName(s)[0];
+
+                       if (typeof LivereTower === 'function') { return; }
+
+                       j = d.createElement(s);
+                       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+                       j.async = true;
+
+                       e.parentNode.insertBefore(j, e);
+                   })(document, 'script');
+                    </script>
+                <noscript> 为正常使用来必力评论功能请激活JavaScript</noscript>
+                </div>
+                
+                <!-- City版安装代码已完成 -->
+
+            </div>
+            
+
+			
+            <!-- Tabe of Content -->
+            <!-- Table of Contents -->
+
+    
+      <aside id="sidebar">
+        <div id="toc" class="toc-article">
+        <strong class="toc-title">Contents</strong>
+        
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#Apache-Flink：时间戳与水印"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">Apache Flink：时间戳与水印</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Flink-时间语义"><span class="toc-nav-number">1.1.</span> <span class="toc-nav-text">Flink 时间语义</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Window划分"><span class="toc-nav-number">1.2.</span> <span class="toc-nav-text">Window划分</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Watermark水印"><span class="toc-nav-number">1.3.</span> <span class="toc-nav-text">Watermark水印</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#提取事件时间、产生水印"><span class="toc-nav-number">1.4.</span> <span class="toc-nav-text">提取事件时间、产生水印</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#周期性水印-WithPeriodicWatermarks"><span class="toc-nav-number">1.4.1.</span> <span class="toc-nav-text">周期性水印(WithPeriodicWatermarks)</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#AscendingTimestampExtractor"><span class="toc-nav-number">1.4.1.1.</span> <span class="toc-nav-text">AscendingTimestampExtractor</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#BoundedOutOfOrdernessTimestampExtractor"><span class="toc-nav-number">1.4.1.2.</span> <span class="toc-nav-text">BoundedOutOfOrdernessTimestampExtractor</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#IngestionTimeExtractor"><span class="toc-nav-number">1.4.1.3.</span> <span class="toc-nav-text">IngestionTimeExtractor</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#打点水印-AssignerWithPunctuatedWatermarks"><span class="toc-nav-number">1.4.2.</span> <span class="toc-nav-text">打点水印(AssignerWithPunctuatedWatermarks)</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#AllowedLateness介绍"><span class="toc-nav-number">1.5.</span> <span class="toc-nav-text">AllowedLateness介绍</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#迟到数据处理"><span class="toc-nav-number">1.6.</span> <span class="toc-nav-text">迟到数据处理</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#将迟到数据丢弃"><span class="toc-nav-number">1.6.0.1.</span> <span class="toc-nav-text">将迟到数据丢弃</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#侧输出迟到数据"><span class="toc-nav-number">1.6.0.2.</span> <span class="toc-nav-text">侧输出迟到数据</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#更新计算结果"><span class="toc-nav-number">1.6.0.3.</span> <span class="toc-nav-text">更新计算结果</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#与Watermarks同时使用的情况"><span class="toc-nav-number">1.6.0.4.</span> <span class="toc-nav-text">与Watermarks同时使用的情况</span></a></li></ol></li></ol></li></ol></li></ol>
+        
+        </div>
+      </aside>
+    
+
+                
+            <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#Flink" title="Flink">Flink</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'left',
+          icon: 'ℬ'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+
+
+<style  type="text/css">
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; GY 2021 
+                    <br>
+                    Powered by 
+                    <a href="https://github.com/dusign/hexo-theme-snail" target="_blank" rel="noopener">
+                        <i>hexo-theme-snail</i>
+                    </a> | 
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0"
+                        width="100px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=dusign&repo=hexo-theme-snail&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- Search -->
+
+<script src="/js/search.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 百度站长 -->
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://gaothink.top/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Search -->
+
+    <script type="text/javascript">      
+        var search_path = "search.xml";
+        if (search_path.length == 0) {
+            search_path = "search.xml";
+        }
+    var path = "/" + search_path;
+    searchFunc(path, 'local-search-input', 'local-search-result');
+    </script>
+
+
+<!-- busuanzi -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+	<a id="rocket" href="#top" class=""></a>
+	<script type="text/javascript" src="/js/totop.js?v=1.0.0" async=""></script>
+    <script type="text/javascript" src="/js/toc.js?v=1.0.0" async=""></script>
+	
+    
+        <!-- background effects line -->
+        
+
+        
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+        
+
+        <!-- background effects end -->
+    
+
+    <!--<script size="50" alpha='0.3' zIndex="-999" src="/js/ribbonStatic.js"></script>-->
+    
+        <script src="/js/ribbonDynamic.js"></script>
+    
+	
+	
+        <script type="text/javascript" src="/js/fancybox/jquery.fancybox.min.js"></script>
+        <script type="text/javascript" src="/js/wrapImage.js"></script>
+    
+	
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>

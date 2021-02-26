@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="baidu-site-verification" content="uHZGT15IXQ" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="GaoThink·思考志">
+    <meta name="keyword"  content="大数据,Bigdata,Linux,CDH">
+    <link rel="shortcut icon" href="/img/ironman-draw.png">
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <!--<link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>-->
+   
+	<title>
+        
+          《全面回忆》之 — HBase - GaoThink·思考志
+        
+    </title>
+
+    <link rel="canonical" href="http://gaothink.top/2020/03/29/全面回忆-《全面回忆》之-—-HBase/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS --> 
+    
+        
+<link rel="stylesheet" href="/css/dusign-light.css">
+
+        
+<link rel="stylesheet" href="/css/dusign-common-light.css">
+
+        
+<link rel="stylesheet" href="/css/font-awesome.css">
+
+        
+<link rel="stylesheet" href="/css/toc.css">
+
+        <!-- background effects end -->
+    
+    
+	<!-- fancybox support -->
+    
+      
+<link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css">
+
+    
+	
+    <!-- Pygments Highlight CSS -->
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+
+    
+<link rel="stylesheet" href="/css/widget.css">
+
+
+    
+<link rel="stylesheet" href="/css/rocket.css">
+
+
+    
+<link rel="stylesheet" href="/css/signature.css">
+
+
+    
+<link rel="stylesheet" href="/css/fonts.googleapis.css">
+
+
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <!-- photography -->
+    
+<link rel="stylesheet" href="/css/photography.css">
+
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+	
+	
+	<!-- Baidu Tongji -->
+    
+    <script>
+        // dynamic User by Hux
+        var _baId = '3c93829ba3b988ba61d1e9a4688967d3';
+    
+        // Originial
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "//hm.baidu.com/hm.js?" + _baId;
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+	
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- background effects start -->
+    
+    <!-- background effects end -->
+
+	<!-- Modified by Yu-Hsuan Yen -->
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        
+            
+                background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('')
+                /*post*/
+            
+        
+    }
+    
+</style>
+
+<header class="intro-header" >
+    <!-- Signature -->
+    <div id="signature">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                
+                    <div class="post-heading">
+                        <div class="tags">
+                            
+                              <a class="tag" href="/tags/#HBase" title="HBase">HBase</a>
+                            
+                              <a class="tag" href="/tags/#全面回忆" title="全面回忆">全面回忆</a>
+                            
+                        </div>
+                        <h1>《全面回忆》之 — HBase</h1>
+                        <h2 class="subheading"></h2>
+                        <span class="meta">
+                            Posted by GY on
+                            2020-03-29
+                        </span>
+
+                        
+                            <div class="blank_box"></div>
+                            <span class="meta">
+                                Words <span class="post-count">6.4k</span> and
+                                Reading Time <span class="post-count">23</span> Minutes
+                            </span>
+                            <div class="blank_box"></div>
+                            <!-- 不蒜子统计 start -->
+                            <span class="meta">
+                                Viewed <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span> Times
+                            </span>
+                            <!-- 不蒜子统计 end -->
+                        
+
+                    </div>
+                
+
+                </div>
+            </div>
+        </div>      
+    </div>
+
+    
+    <div class="waveWrapper">
+        <div class="wave wave_before" style="background-image: url('/img/wave-light.png')"></div>
+        <div class="wave wave_after" style="background-image: url('/img/wave-light.png')"></div>
+    </div>
+    
+</header>
+
+	
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">GaoThink</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archive/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/categories/">Categories</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <p><img src="http://hbase.apache.org/images/hbase_logo_with_orca_large.png" alt=""></p>
+<hr>
+<h2 id="1-HBase框架简介"><a href="#1-HBase框架简介" class="headerlink" title="1. HBase框架简介"></a>1. HBase框架简介</h2><p>HBase是一个分布式的、面向列的开源数据库，它不同于一般的关系数据库,是一个适合于非结构化数据存储的数据库。另一个不同的是HBase基于列的而不是基于行的模式.</p>
+<p>在分布式的生产环境中，HBase 需要运行在 HDFS 之上，以 HDFS 作为其基础的存储设施。HBase 上层提供了访问的数据的 Java API 层，供应用访问存储在 HBase 的数据。在 HBase 的集群中主要由 Master 和 Region Server 组成，以及 Zookeeper</p>
+<p>简单介绍一下 HBase 核心模块的作用：</p>
+<h3 id="1-Zookeeper"><a href="#1-Zookeeper" class="headerlink" title="1.  Zookeeper"></a>1.  Zookeeper</h3><p>HBase 使用 ZooKeeper 作为分布式协调服务来维护集群中的服务状态。Zookeeper 维护哪些服务处于活跃状态并且是可用的，并提供服务故障通知。Zookeeper 使用一致性协议来保证分布式状态的一致性。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410153537.png" alt=""></p>
+<p>深入学习可参考：<a href="https://www.jianshu.com/p/dd8e3eb22dd8" target="_blank" rel="noopener">《ZooKeeper在HBase集群中的作用》</a></p>
+<h3 id="2-HMaster"><a href="#2-HMaster" class="headerlink" title="2. HMaster"></a>2. HMaster</h3><p>Region 的分配，DDL（创建，删除表）操作均由 HMaster 负责处理。</p>
+<p>HMaster具体负责：</p>
+<ul>
+<li>协调 RegionServer：<ul>
+<li>在启动时分配 Region、在故障恢复或者负载均衡时重新分配 Region。</li>
+<li>监视集群中的所有 RegionServer 实例（侦听来自 Zookeeper 的通知）。</li>
+</ul>
+</li>
+<li>管理员功能：创建，删除，更新表的接口。</li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410153418.png" alt=""></p>
+<h3 id="3-HRegionServer"><a href="#3-HRegionServer" class="headerlink" title="3. HRegionServer"></a>3. HRegionServer</h3><p>HBase 表根据 RowKey 的开始和结束范围水平拆分为多个 Region。</p>
+<p>每个 Region 都包含了 StartKey 和 EndKey 之间的所有行。</p>
+<p>每个 Region 都会分配到集群的一个节点上，即 RegionServer，由它们为读写提供数。RegionServer 大约可以管理 1000 多个 Region。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410153317.png" alt=""></p>
+<blockquote>
+<p>Hstore存储是HBase的存储核心，由两部分组成</p>
+<ul>
+<li><strong>MemStore</strong>：用户写入的数据首先会放入MemStore</li>
+<li><strong>StoreFiles</strong>: 当MemStore满了以后会Flush成一个StoreFile（底层实现是HFile）</li>
+</ul>
+</blockquote>
+<p>当Store File文件数量增长到一定阈值，会触发Compact合并操作，将多个StoreFiles合并成一个StoreFile，合并过程中会进行版本合并和数据删除</p>
+<p>HBase其实只有增加数据，<strong>所有的更新和删除操作都是在后续的compact过程中进行的</strong></p>
+<hr>
+<h2 id="2-Hbase数据模型"><a href="#2-Hbase数据模型" class="headerlink" title="2. Hbase数据模型"></a>2. Hbase数据模型</h2><h3 id="1-逻辑视图"><a href="#1-逻辑视图" class="headerlink" title="1 逻辑视图"></a>1 逻辑视图</h3><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200329003804.png" alt=""></p>
+<p>基本概念：<br>（1）Table: 表<br>（2）RowKey: 是Byte array，是表中每条记录的”主键”，方便快速查找；<br>（3）Column Family: 列族（HBase中列族是一些列的集合）；<br>（4）Column: 属于某一个columnfamily，每条记录可动态添加列；<br>（5）Timestamp：时间戳（每个时间戳对应不同的版本）类型为Long，默认值是系统时间戳，可由用户自定义；<br>（6）Value(Cell)：单元格（通过行键、列簇和列簇名、版本号来确定具体的一个单元格内容）唯一确定，无数据类型，全部是字节码形式</p>
+<h3 id="2-物理模型"><a href="#2-物理模型" class="headerlink" title="2 物理模型"></a>2 物理模型</h3><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200329003448.png" alt=""></p>
+<p>（1）Table在行的方向上分割为多个Region。<br>（2）Table中的所有行都按照row key的字典序排列，根据rowkey存储在不同的Region上。<br>（3）Region是按大小分割的，每个表开始只有一个region，随着数据增多，region不断增大，当增大到一个阈值的时候，region就会等分成两个新的region，之后会有越来越多的region。<br>（4）Region是HBase中分布式存储和负载均衡的最小单元。不同Region分布到不同RegionServer上。移动的时候是移动一个Region，进行不同RegionServer之间的负载均衡。<br>（5）Region虽然是分布式存储的最小单元，但并不是存储的最小单元，存储的最小单元是Cell。Region由一个或者多个Store组成，每个store保存一个columns family列簇。每个store又由一个memStore和0至多个StoreFile组成。memStore存储在内存中，StoreFile存储在HDFS上。memStore是内存中划分的一个区间，StoreFile是底层存储在HDFS上的文件。<br>（6）每个column family存储在HDFS上的一个单独文件中。Key和Version number在每个column family中均有一份。空值不会被保存。</p>
+<hr>
+<h2 id="3-LSM"><a href="#3-LSM" class="headerlink" title="3. LSM"></a>3. LSM</h2><p>HBase 在存储上是基于<strong>LSM树</strong>实现的，与传统的B/B+树原理不同的是，LSM树非常适用于写入要求非常高的场景。</p>
+<p>LSM树，即日志结构合并树(Log-Structured Merge-Tree)。其实它并不属于一个具体的数据结构，它更多是一种数据结构的设计思想。大多NoSQL数据库核心思想都是基于LSM来做的，只是具体的实现不同。</p>
+<blockquote>
+<p>它的核心思路其实非常简单，就是假定内存足够大，因此不需要每次有数据更新就必须将数据写入到磁盘中，而可以先将最新的数据驻留在内存中，等到积累到最后多之后，再使用归并排序的方式将内存内的数据合并追加到磁盘队尾(因为所有待排序的树都是有序的，可以通过合并排序的方式快速合并到一起)。</p>
+</blockquote>
+<p>当写读比例很大的时候（写比读多），LSM树相比于B树有更好的性能。因为随着insert操作，为了维护B树结构，节点分裂。读磁盘的随机读写概率会变大，性能会逐渐减弱。 多次单页随机写，变成一次多页随机写,复用了磁盘寻道时间，极大提升效率。</p>
+<hr>
+<h2 id="4-Region定位"><a href="#4-Region定位" class="headerlink" title="4. Region定位"></a>4. Region定位</h2><p><strong>旧版本：</strong><br>在0.96.0版本之前，region的查询通过三层架构来定位：<br><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200328232333.png" alt="|600*0"></p>
+<p>.META. :元数据表，存储了所有region的简要信息。.META.表中的一行记录就是一个Region，该行记录了该Region的起始行，结束行，和该Region的连接信息，这样客户端就可以通过这个来判断需要的数据在哪个region上。 </p>
+<p>-ROOT- : 存储.META.表的表，存储了.META.表在什么region上的信息（.META.表也是一张普通的表，也在Region上）</p>
+<p><strong>旧版本的弊端:</strong><br>通过三层架构虽然极大地扩展了可以容纳的Region数量，一直扩展到了171亿个Region，可是我们真的可以用到这么多吗？实际上不太可能。 虽然设计上是允许多个.META.表存在的，但是实际上在HBase的发展历史中，.META.表一直只有一个，所以-ROOT-中的记录一直都只有一行，-ROOT-表形同虚设。三层架构增加了代码的复杂度，容易产生BUG。 </p>
+<p><strong>新版本：</strong><br>从0.96版本之后这个三层查询架构被改成了二层查询架构。-ROOT-表被去掉了，同时zk中的/hbase/root-region-server也被去掉了。这回直接把.META.表所在的RegionServer信息存储到了zk中的/hbase/meta-region-server去了。再后来引入了namespace，.META.表的名字被修改成了hbase:meta。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410155045.png" alt=""></p>
+<p>（1）客户端先通过ZooKeeper的/hbase/meta-region-server节点查询到哪台RegionServer上有hbase:meta表。<br>（2）客户端连接含有hbase:meta表的RegionServer。hbase:meta表存储了所有Region的行键范围信息，通过这个表就可以查询出你要存取的rowkey属于哪个Region的范围里面，以及这个Region又是属于哪个RegionServer。<br>（3）获取这些信息后，客户端就可以直连其中一台拥有你要存取的rowkey的RegionServer，并直接对其操作。 客户端会把meta信息缓存起来，下次操作就不需要进行以上加载hbase:meta的步骤了。</p>
+<hr>
+<h2 id="5-RegionServer组成"><a href="#5-RegionServer组成" class="headerlink" title="5. RegionServer组成"></a>5. RegionServer组成</h2><p>RegionServer 在 HDFS 数据节点上运行，并包含如下组件：</p>
+<ul>
+<li><strong>WAL</strong>：预写日志是分布式文件系统上的一个文件。用于存储还没持久化存储的新数据，并在出现故障时可以进行恢复。</li>
+<li><strong>BlockCache</strong>：读缓存，将经常读取的数据存储在内存中。内存不足时删除最近最少使用的数据。</li>
+<li><strong>MemStore</strong>：写缓存，存储还没写入磁盘的新数据。在写入磁盘之前先对其进行排序。每个 Region 的每个列族都有一个 MemStore。</li>
+<li><strong>HFile</strong>：将行以有序的 KeyValue 形式存储在磁盘上。</li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410170449.png" alt=""></p>
+<p>（图片来源：<a href="http://www.n10k.com/blog/hbase-for-architects/" target="_blank" rel="noopener">Transcript of HBase for Architects Presentation</a>）</p>
+<hr>
+<h2 id="6-高可用"><a href="#6-高可用" class="headerlink" title="6. 高可用"></a>6. 高可用</h2><h3 id="1-WAL保障数据高可用"><a href="#1-WAL保障数据高可用" class="headerlink" title="1 WAL保障数据高可用"></a>1 WAL保障数据高可用</h3><p>HBase中的HLog机制是WAL（Write-Ahead-Log）的一种实现，而WAL（一般翻译为预写日志）是事务机制中常见的一致性的实现方式。每个RegionServer中都会有一个HLog的实例，RegionServer会将更新操作（如 Put，Delete）先记录到 WAL（也就是HLo）中，然后将其写入到Store的MemStore，最终MemStore会将数据写入到持久化的HFile中（MemStore 到达配置的内存阀值）。这样就保证了HBase的写的可靠性。<strong>如果没有 WAL，当RegionServer宕掉的时候，MemStore 还没有写入到HFile，或者StoreFile还没有保存，数据就会丢失。或许有的读者会担心HFile本身会不会丢失，这是由 HDFS 来保证的</strong>。在HDFS中的数据默认会有3份。因此这里并不考虑 HFile 本身的可靠性。</p>
+<p>HFile由很多个数据块（Block）组成，并且有一个固定的结尾块。其中的数据块是由一个Header和多个Key-Value的键值对组成。在结尾的数据块中包含了数据相关的索引信息，系统也是通过结尾的索引信息找到HFile中的数据。</p>
+<h3 id="2-组件高可用"><a href="#2-组件高可用" class="headerlink" title="2 组件高可用"></a>2 组件高可用</h3><ul>
+<li>Master容错：Zookeeper重新选择一个新的Master。如果无Master过程中，数据读取仍照常进行，但是，region切分、负载均衡等无法进行；</li>
+<li>RegionServer容错：定时向Zookeeper汇报心跳，如果一旦时间内未出现心跳，Master将该RegionServer上的Region重新分配到其他RegionServer上，失效服务器上“预写”日志由主服务器进行分割并派送给新的RegionServer；</li>
+<li>Zookeeper容错：Zookeeper是一个可靠地服务，一般配置3或5个Zookeeper实例。</li>
+</ul>
+<hr>
+<h2 id="7-HBase读写"><a href="#7-HBase读写" class="headerlink" title="7. HBase读写"></a>7. HBase读写</h2><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200329003839.png" alt=""></p>
+<p>上图是RegionServer数据存储关系图</p>
+<h3 id="1-写操作流程"><a href="#1-写操作流程" class="headerlink" title="1 写操作流程"></a>1 写操作流程</h3><p>当用户第一次想HBase中进行读或写操作时，以下步骤将被执行：</p>
+<ol>
+<li><p>客户从ZooKeeper中得到保存META table的Region server的信息。</p>
+</li>
+<li><p>客户向该Region server查询<strong>负责管理</strong>自己想要访问的row key的所在的region<strong>的Region server</strong>的地址。客户会缓存这一信息以及META table所在位置的信息。</p>
+</li>
+<li><p>客户与负责其row所在region的Region Server通信，实现对该行的读写操作。</p>
+</li>
+</ol>
+<p>在未来的读写操作中，客户会根据缓存寻找相应的Region server地址。除非该Region server不再可达。这时客户会重新访问META table并更新缓存。这一过程如下图所示：</p>
+<h4 id="步骤一"><a href="#步骤一" class="headerlink" title="步骤一"></a>步骤一</h4><p>当HBase的用户发出一个<strong>PUT</strong>请求时（也就是HBase的写请求），HBase进行处理的第一步是将数据写入HBase的write-ahead log（WAL）中。</p>
+<ul>
+<li>WAL文件是顺序写入的，也就是所有新添加的数据都被加入WAL文件的末尾。WAL文件存在硬盘上。</li>
+<li>当server出现问题之后，WAL可以被用来恢复尚未写入HBase中的数据（因为WAL是保存在硬盘上的）。</li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410164828.png" alt=""></p>
+<h4 id="步骤二"><a href="#步骤二" class="headerlink" title="步骤二"></a>步骤二</h4><p>当数据被成功写入WAL后，HBase将数据存入MemStore。</p>
+<p>客户端接收到确认信息后，对于客户端来说，此次操作便结束了。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410164959.png" alt=""></p>
+<h4 id="步骤三"><a href="#步骤三" class="headerlink" title="步骤三"></a>步骤三</h4><p>Memstore存在于内存中，其中存储的是<strong>按键排好序的</strong>待写入硬盘的数据。数据也是按键排好序写入HFile中的。每一个Region中的每一个Column family对应一个Memstore文件。因此对数据的更新也是对应于每一个Column family。</p>
+<blockquote>
+<p>HFile与StoreFile可以理解为同一种，HFile是StoreFile的底层实现，是一一对应的关系</p>
+</blockquote>
+<h4 id="步骤四"><a href="#步骤四" class="headerlink" title="步骤四"></a>步骤四</h4><p>当MemStore中积累了足够多的数据之后，整个Memcache中的数据会被一次性写入到HDFS里的一个新的HFile中。因此HDFS中一个Column family可能对应多个HFile。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410165602.png" alt=""></p>
+<blockquote>
+<p>为什么 HBase 中的列族数量受到限制？</p>
+<p>因为每个列族都有一个 MemStore，而当发生刷新时，属于同一个 Region 下的所有 MemStore 都将刷新，这可能导致性能下降，并影响最终的 HFile 文件大小（HDFS 不适合存储小文件），所以列族的数量应该被限制以提高整体效率。</p>
+</blockquote>
+<h4 id="步骤五"><a href="#步骤五" class="headerlink" title="步骤五"></a>步骤五</h4><p>HBase中的键值数据对存储在HFile中。上面已经说过，当MemStore中积累足够多的数据的时候就会将其中的数据整个写入到HDFS中的一个新的HFile中。因为MemStore中的数据已经按照键排好序，所以这是一个顺序写的过程。由于顺序写操作避免了磁盘大量寻址的过程，所以这一操作非常高效。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410172544.png" alt=""></p>
+<p>至此，客户端从发出 Put 请求到数据持久化的过程才算是真正的完成。</p>
+<p>当数据逐渐被写入，还会发生<strong>压缩</strong>（Compaction），后面会详细讲一下</p>
+<blockquote>
+<ul>
+<li>Minor Compaction，列族中小范围的HFile文件合并，一般较快，占用IO低</li>
+<li>Major Compaction，列族中所有的HFile文件合并，同时清理TTL过期以及延迟删除的数据，该过程会产生大量IO操作，性能影响较大。</li>
+</ul>
+</blockquote>
+<h3 id="2-读操作流程"><a href="#2-读操作流程" class="headerlink" title="2 读操作流程"></a>2 读操作流程</h3><h4 id="HFile索引"><a href="#HFile索引" class="headerlink" title="HFile索引"></a>HFile索引</h4><p>HFile 包含多层索引，从而使 HBase 无需读取整个文件即可查找数据。多级索引类似一个 B+ 树：</p>
+<ul>
+<li>键值对以升序存储</li>
+<li>Rowkey 对应索引指向 64KB 大小的数据块</li>
+<li>每个数据块都有自己的叶子索引</li>
+<li>每个数据块的最后一个键放在中间索引中</li>
+<li>根索引指向中间索引</li>
+</ul>
+<blockquote>
+<p>三种索引类型：</p>
+<p>(1) Root Index：根索引</p>
+<p>(2) Intermediate Index：中间索引 </p>
+<p>(3) Leaf Index：叶子索引</p>
+</blockquote>
+<p>Trailer 指向 meta 数据块，并将数据写入到持久化文件的末尾。Trailer 还包含诸如布隆过滤器和时间范围之类的信息。布隆过滤器可以帮助我们跳过不包含在特定行键的文件。时间范围信息可以帮助我们跳过不在读取的时间范围内的文件。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410171748.png" alt=""></p>
+<p>刚才我们讨论的索引，在 HFile 被打开时会被载入内存，这样数据查询只要一次磁盘查询。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410171824.png" alt=""></p>
+<h4 id="读取合并"><a href="#读取合并" class="headerlink" title="读取合并"></a>读取合并</h4><p>我们已经看到，对应于一行的 KeyValue 单元可以存储在多个位置，已经持久化的行单元位于 HFiles 中，最近更新的单元位于 MemStore 中，而最近读取的单元位于 BlockCache 中。因此，当我们读取一行时，系统如何获取对应的单元返回？读取操作需要通过以下步骤合并来 BlockCache、MemStore 以及 HFiles 中的键值：</p>
+<ul>
+<li>首先，扫描程序在 BlockCache(读缓存) 中查找行单元。最近读取过的键值存储在这里，并且当内存不足时需要删除最近最少使用的数据。</li>
+<li>接下来，扫描程序在 MemStore(写缓存) 中查找，这里包含最近的写入。</li>
+<li>如果扫描程序在 MemStore 和 BlockCache 中没有找到所有行单元，那么 HBase 将使用 BlockCache 索引和布隆过滤器将 HFiles 加载到内存中，从相应的HFile中读取目标行的数据。</li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410171908.png" alt=""></p>
+<blockquote>
+<p>这里一个需要注意的地方，一个MemStore对应的数据可能存储于多个不同的HFile中（由于多次的flush），因此在进行读操作的时候，HBase可能需要读取多个HFile来获取想要的数据。这会影响HBase的性能表现。这就是所谓的读放大效应（Read amplification）</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410172027.png" alt=""></p>
+</blockquote>
+<p>综上</p>
+<h4 id="HBase读取流程"><a href="#HBase读取流程" class="headerlink" title="HBase读取流程"></a>HBase读取流程</h4><p>(1) Client访问Zookeeper，获取.META.表信息。</p>
+<p>(2) 从.META.表查找，获取存放目标数据的Region信息，从而找到对应的RegionServer。</p>
+<p>(3) 通过RegionServer获取需要查找的数据。</p>
+<p>(4) 读请求先到MemStore中查数据，查不到就到BlockCache中查，再查不到就会到StoreFile上读，并把读的结果放入BlockCache。</p>
+<hr>
+<h2 id="8-缓存机制"><a href="#8-缓存机制" class="headerlink" title="8.缓存机制"></a>8.缓存机制</h2><h3 id="1-写缓存MemStore"><a href="#1-写缓存MemStore" class="headerlink" title="1 写缓存MemStore"></a>1 写缓存MemStore</h3><p>MemStore 作为 HBase 的写缓存，保存着数据的最近一次更新，同时是HBase能够实现高性能随机读写的重要组成</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200329004335.png" alt=""></p>
+<p>MemStore的主要作用：</p>
+<ol>
+<li>更新数据存储在 MemStore 中，使用 LSM（Log-Structured Merge Tree）数据结构存储，在内存内进行排序整合。即保证写入数据有序（HFile中数据都按照RowKey进行排序），同时可以极大地提升HBase的写入性能。</li>
+<li>作为内存缓存，读取数据时会优先检查 MemStore，根据局部性原理，新写入的数据被访问的概率更大。</li>
+<li>在持久化写入前可以做某些优化，例如：保留数据的版本设置为1，持久化只需写入最新版本。</li>
+</ol>
+<p>如果一个 HRegion 中 MemStore 过多（Column family 设置过多），每次 flush 的开销必然会很大，并且生成大量的 HFile 影响后续的各项操作，因此建议在进行表设计的时候尽量减少 Column family 的个数。</p>
+<p><a href="https://www.jianshu.com/p/396664db17be" target="_blank" rel="noopener">HBase MemStore简介</a></p>
+<h3 id="2-读缓存BlockCache"><a href="#2-读缓存BlockCache" class="headerlink" title="2 读缓存BlockCache"></a>2 读缓存BlockCache</h3><p>BlockCache 作为 HBase 的读缓存，保存着最近被访问的数据块。HBase 顺序地读取一个数据块到内存缓存中，读取相邻的数据就可以在内存中读取而不需要再次从磁盘中读取，有效减少磁盘IO。<strong>使用 Scan API 扫描的时候，建议关闭 BlockCache，Scan 的场景中缓存意义不大</strong></p>
+<p>HBase 读路径为，首先检查 MemStore，然后检查 BlockCache，最后检索 HFile，并且合并一条数据的信息（read merge）返回给客户端</p>
+<p><a href="https://www.jianshu.com/p/64512e706548" target="_blank" rel="noopener">HBase BlockCache简介</a></p>
+<hr>
+<h2 id="9-HBase-压缩-Compaction"><a href="#9-HBase-压缩-Compaction" class="headerlink" title="9.HBase 压缩 (Compaction)"></a>9.HBase 压缩 (Compaction)</h2><h3 id="Compaction-策略"><a href="#Compaction-策略" class="headerlink" title="Compaction 策略"></a>Compaction 策略</h3><p><strong>Compaction 的目的是优化读性能，但会导致 IO 放大</strong>，这是因为在合并过程中，文件需要不断的被读入、写出，加上 HDFS 的多副本复制，则会再一次增加多次的IO操作。此外，Compaction 利用了缓冲区合并来避免对已有的 HFile 造成阻塞，只有在最后合并 HFile 元数据时会有一点点的影响，这几乎可以忽略不计。但 Compaction 完成后会淘汰Block Cache，这样便会造成短期的读取时延增大。</p>
+<p>在性能压测时通常可以看到由 Compaction 导致的一些”毛刺”现象，但这是不可避免的，我们只能是根据业务场景来选择一些合理的 Compaction 策略。</p>
+<p>一般，Minor Compaction 会配置为按需触发，其合并的范围小，时间短，对业务性能的影响相对可控。但 Major Compaction 则建议是在业务闲时手动触发，以避免业务造成严重的卡顿。</p>
+<h3 id="Minor压缩"><a href="#Minor压缩" class="headerlink" title="Minor压缩"></a>Minor压缩</h3><p>HBase 会自动选择一些较小的 HFile，将它们重写合并为一些较大的 HFile。 此过程称为 Minor 压缩。这样通过将比较多且较小的文件重写为比较少但较大的文件可以减少存储文件的数量。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410175649.png" alt=""></p>
+<h3 id="Major压缩"><a href="#Major压缩" class="headerlink" title="Major压缩"></a>Major压缩</h3><p>Major 压缩会将一个 Region 中的所有 HFile 合并重写为每个列族一个 HFile，在此过程中会删除已删除或已过期的单元。这样可以提高读取性能，但是由于 Major 压缩会重写所有文件，因此这个过程可能会发生大量磁盘 I/O 和网络流量。这称为写放大。</p>
+<p>Major 压缩可以调整为自动运行。由于写放大，通常需要在周末或晚上进行 Major 压缩。Major 压缩还可以使由于服务器故障或负载均衡而变成远程文件重新回到 RegionServer 数据本地性。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200410175725.png" alt=""></p>
+<hr>
+<h2 id="10-Region的分割（Region-split）"><a href="#10-Region的分割（Region-split）" class="headerlink" title="10.Region的分割（Region split）"></a>10.Region的分割（Region split）</h2><p>让我们快速了解一下 Region：</p>
+<ul>
+<li>一个表可以水平拆分为一个或多个 Region。Region 在开始键和结束键之间包含连续的，有序的行</li>
+<li>每个 Region 默认大小为1GB</li>
+<li>表的 Region 由 RegionServer 提供给客户端</li>
+<li>RegionServer 大约可以管理 1,000个 Region（可能属于同一表或不同表）</li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200412154224.png" alt=""></p>
+<p>最初，每个表只有一个 Region。当 Region 过大时，会分为两个子 Region。两个子 Region（代表原始 Region 的一半）可以在同一 RegionServer 上并行打开，拆分时会报告给 HMaster。出于负载均衡的原因，HMaster 可能会将新 Region 迁移到其他服务器。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200412153944.png" alt=""></p>
+<h3 id="读取负载均衡"><a href="#读取负载均衡" class="headerlink" title="读取负载均衡"></a>读取负载均衡</h3><p>拆分最初发生在同一个 RegionServer 上，但是出于负载均衡的考虑，HMaster 可能会将新 Region 迁移至其他 RegionServer。这会导致新的 RegionServer 从远程 HDFS 节点上访问数据，需要等到 Major 压缩时才将数据文件移动到新的 RegionServer 的本地节点上。HBase 数据在写入时是在本地节点的，但是在迁移 Region 时(用于负载均衡或故障恢复)，会丢失数据本地性。</p>
+<blockquote>
+<p>Region 迁移只是逻辑上的迁移，数据还在原先的 RegionServer 上，只是 Region 交给新的 RegionServer 管理。</p>
+</blockquote>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200412154850.png" alt=""></p>
+<h3 id="使用建议"><a href="#使用建议" class="headerlink" title="使用建议"></a>使用建议</h3><p>首先，一个 HBase 数据库是否高效，很大程度会和 <strong>Row-Key 的设计</strong>有关。因此，如何设计 Row-key 是使用 HBase 时，一个非常重要的话题。随着数据访问方式的不同，Row-Key 的设计也会有所不同。不过概括起来的宗旨只有一个，那就是尽可能选择一个 Row-Key，可以使你的数据<strong>均匀的分布在集群中</strong>。这也很容易理解，因为 HBase 是一个分布式环境，Client 会访问不同 Region Server 获取数据。如果数据排布均匀在不同的多个节点，那么在批量的 Client 便可以从不同的 Region Server 上获取数据，而不是瓶颈在某一个节点，性能自然会有所提升。对于具体的建议我们一般有几条：</p>
+<ul>
+<li>当客户端需要频繁的写一张表，随机的 RowKey 会获得更好的性能。</li>
+<li>当客户端需要频繁的读一张表，有序的 RowKey 则会获得更好的性能。</li>
+<li>对于时间连续的数据（例如 log），有序的 RowKey 会很方便查询一段时间的数据（Scan 操作）。</li>
+</ul>
+<hr>
+<h2 id="11-故障恢复"><a href="#11-故障恢复" class="headerlink" title="11.故障恢复"></a>11.故障恢复</h2><p>当 RegionServer 发生故障时，崩溃的 Region 会不可用，直到执行检测和恢复步骤时才可以使用。当失去 RegionServer 心跳信号时，Zookeeper 认定为节点发生故障。然后，HMaster 将被告知 RegionServer 发生故障。</p>
+<p>当 HMaster 检测到 RegionServer 崩溃时，HMaster 将发生崩溃的 RegionServer 中的 Region 重新分配给 Active RegionServer。</p>
+<p>为了恢复崩溃的 RegionServer 中的 MemStore 内容(还未刷写到磁盘)。HMaster 将属于崩溃 RegionServer 的 WAL 拆分为不同的文件，并将这些文件存储在新 RegionServer 的数据节点中。然后每个 RegionServer 回放各自拿到的拆分的 WAL，以重建该 MemStore。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200412170822.png" alt=""></p>
+<hr>
+<h2 id="12-数据恢复"><a href="#12-数据恢复" class="headerlink" title="12.数据恢复"></a>12.数据恢复</h2><p>WAL 文件包含一系列编辑，其中每一个编辑都表示一个 Put 或 Delete 操作。编辑是按时间顺序写入的，因此，持久化时将内容追加到存储在磁盘上的 WAL 文件的末尾。</p>
+<p><strong>如果数据仍在内存中但未持久化保存到 HFile 时发生故障，该怎么办？</strong>重放 WAL。通过读取 WAL，将包含的编辑内容写入到当前的 MemStore 并对其进行排序来完成 WAL 的重放。最后，刷写 MemStore 以将更改写入 HFile。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200412170940.png" alt=""></p>
+<hr>
+<h2 id="13-HBase-为什么这么快"><a href="#13-HBase-为什么这么快" class="headerlink" title="13.HBase 为什么这么快"></a>13.HBase 为什么这么快</h2><p><strong>A：</strong>如果快速查询（从磁盘读数据），hbase是根据rowkey查询的，只要能快速的定位rowkey,  就能实现快速的查询，主要是以下因素：<br> 1、hbase是可划分成多个region，你可以简单的理解为关系型数据库的多个分区。<br> 2、键是排好序了的<br> 3、按列存储的</p>
+<p>首先，能快速找到行所在的region(分区)，假设表有10亿条记录，占空间1TB,   分列成了500个region,  1个region占2个G. 最多读取2G的记录，就能找到对应记录；<br> 其次，是按列存储的，其实是列族，假设分为3个列族，每个列族就是666M， 如果要查询的东西在其中1个列族上，1个列族包含1个或者多个HStoreFile，假设一个HStoreFile是128M， 该列族包含5个HStoreFile在磁盘上. 剩下的在内存中。<br> 再次，是排好序了的，你要的记录有可能在最前面，也有可能在最后面，假设在中间，我们只需遍历2.5个HStoreFile共300M<br> 最后，每个HStoreFile(HFile的封装)，是以键值对（key-value）方式存储，只要遍历一个个数据块中的key的位置，并判断符合条件可以了。 一般key是有限的长度，假设跟value是1:19（忽略HFile上其它块），最终只需要15M就可获取的对应的记录，按照磁盘的访问100M/S，只需0.15秒。 加上块缓存机制（LRU原则），会取得更高的效率。</p>
+<p><strong>B：</strong>实时查询<br> 实时查询，可以认为是从内存中查询，一般响应时间在1秒内。HBase的机制是数据先写入到内存中，当数据量达到一定的量（如128M），再写入磁盘中， 在内存中，是不进行数据的更新或合并操作的，只增加数据，这使得用户的写操作只要进入内存中就可以立即返回，保证了HBase I/O的高性能。</p>
+<p>实时查询，即反应根据当前时间的数据，可以认为这些数据始终是在内存的，保证了数据的实时响应。</p>
+<hr>
+<p>相关文章：</p>
+<p><a href="https://mapr.com/blog/in-depth-look-hbase-architecture/" target="_blank" rel="noopener">An In-Depth Look at the HBase Architecture</a></p>
+<p><a href="https://www.jianshu.com/p/fc3be88ec783" target="_blank" rel="noopener">HBase知识点</a></p>
+<p><a href="http://smartsi.club/in-depth-look-hbase-architecture.html" target="_blank" rel="noopener">深入理解HBase架构</a></p>
+
+                
+                <hr>
+                <!-- Pager -->
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/03/30/全面回忆-《全面回忆》之-—-Kafka/" data-toggle="tooltip" data-placement="top" title="《全面回忆》之 — Kafka">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/03/25/优化-优化Git加载速度/" data-toggle="tooltip" data-placement="top" title="优化Git加载速度">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                <!-- tip start -->
+                
+                <div class="comment_notes_blank"></div>
+                <div class="visitor_notice">
+                    <img 
+                        src="/img/notice.png" 
+                        alt="notice"
+                        title="notice"/>
+                    <p class="notice">
+                        除非注明，本博文章均为原创，转载请以链接形式标明本文地址.
+                    </p>
+                </div>
+                
+
+                
+                <div class="comment_notes">
+                    <p>
+                        
+                    </p>
+                </div>
+                
+                <!-- tip end -->
+
+                <!-- Music start-->
+                
+                <!-- Music end -->
+
+                <!-- Sharing -->
+                
+                <!-- Sharing -->
+
+                <!-- gitment start -->
+                
+                <!-- gitment end -->
+			
+			<!-- valine_comments start -->	
+						
+			<!-- valine_comments end -->
+			
+			<!-- 来必力City版安装代码 -->
+                
+                <hr>
+                <div id="lv-container" data-id="city" data-uid="MTAyMC80OTY0OC8yNjEzOQ==">
+                    <script type="text/javascript">
+                   (function(d, s) {
+                       var j, e = d.getElementsByTagName(s)[0];
+
+                       if (typeof LivereTower === 'function') { return; }
+
+                       j = d.createElement(s);
+                       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+                       j.async = true;
+
+                       e.parentNode.insertBefore(j, e);
+                   })(document, 'script');
+                    </script>
+                <noscript> 为正常使用来必力评论功能请激活JavaScript</noscript>
+                </div>
+                
+                <!-- City版安装代码已完成 -->
+
+            </div>
+            
+
+			
+            <!-- Tabe of Content -->
+            <!-- Table of Contents -->
+
+    
+      <aside id="sidebar">
+        <div id="toc" class="toc-article">
+        <strong class="toc-title">Contents</strong>
+        
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#1-HBase框架简介"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">1. HBase框架简介</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#1-Zookeeper"><span class="toc-nav-number">1.1.</span> <span class="toc-nav-text">1.  Zookeeper</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#2-HMaster"><span class="toc-nav-number">1.2.</span> <span class="toc-nav-text">2. HMaster</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#3-HRegionServer"><span class="toc-nav-number">1.3.</span> <span class="toc-nav-text">3. HRegionServer</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#2-Hbase数据模型"><span class="toc-nav-number">2.</span> <span class="toc-nav-text">2. Hbase数据模型</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#1-逻辑视图"><span class="toc-nav-number">2.1.</span> <span class="toc-nav-text">1 逻辑视图</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#2-物理模型"><span class="toc-nav-number">2.2.</span> <span class="toc-nav-text">2 物理模型</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#3-LSM"><span class="toc-nav-number">3.</span> <span class="toc-nav-text">3. LSM</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#4-Region定位"><span class="toc-nav-number">4.</span> <span class="toc-nav-text">4. Region定位</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#5-RegionServer组成"><span class="toc-nav-number">5.</span> <span class="toc-nav-text">5. RegionServer组成</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#6-高可用"><span class="toc-nav-number">6.</span> <span class="toc-nav-text">6. 高可用</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#1-WAL保障数据高可用"><span class="toc-nav-number">6.1.</span> <span class="toc-nav-text">1 WAL保障数据高可用</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#2-组件高可用"><span class="toc-nav-number">6.2.</span> <span class="toc-nav-text">2 组件高可用</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#7-HBase读写"><span class="toc-nav-number">7.</span> <span class="toc-nav-text">7. HBase读写</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#1-写操作流程"><span class="toc-nav-number">7.1.</span> <span class="toc-nav-text">1 写操作流程</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#步骤一"><span class="toc-nav-number">7.1.1.</span> <span class="toc-nav-text">步骤一</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#步骤二"><span class="toc-nav-number">7.1.2.</span> <span class="toc-nav-text">步骤二</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#步骤三"><span class="toc-nav-number">7.1.3.</span> <span class="toc-nav-text">步骤三</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#步骤四"><span class="toc-nav-number">7.1.4.</span> <span class="toc-nav-text">步骤四</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#步骤五"><span class="toc-nav-number">7.1.5.</span> <span class="toc-nav-text">步骤五</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#2-读操作流程"><span class="toc-nav-number">7.2.</span> <span class="toc-nav-text">2 读操作流程</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#HFile索引"><span class="toc-nav-number">7.2.1.</span> <span class="toc-nav-text">HFile索引</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#读取合并"><span class="toc-nav-number">7.2.2.</span> <span class="toc-nav-text">读取合并</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#HBase读取流程"><span class="toc-nav-number">7.2.3.</span> <span class="toc-nav-text">HBase读取流程</span></a></li></ol></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#8-缓存机制"><span class="toc-nav-number">8.</span> <span class="toc-nav-text">8.缓存机制</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#1-写缓存MemStore"><span class="toc-nav-number">8.1.</span> <span class="toc-nav-text">1 写缓存MemStore</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#2-读缓存BlockCache"><span class="toc-nav-number">8.2.</span> <span class="toc-nav-text">2 读缓存BlockCache</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#9-HBase-压缩-Compaction"><span class="toc-nav-number">9.</span> <span class="toc-nav-text">9.HBase 压缩 (Compaction)</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Compaction-策略"><span class="toc-nav-number">9.1.</span> <span class="toc-nav-text">Compaction 策略</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Minor压缩"><span class="toc-nav-number">9.2.</span> <span class="toc-nav-text">Minor压缩</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Major压缩"><span class="toc-nav-number">9.3.</span> <span class="toc-nav-text">Major压缩</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#10-Region的分割（Region-split）"><span class="toc-nav-number">10.</span> <span class="toc-nav-text">10.Region的分割（Region split）</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#读取负载均衡"><span class="toc-nav-number">10.1.</span> <span class="toc-nav-text">读取负载均衡</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#使用建议"><span class="toc-nav-number">10.2.</span> <span class="toc-nav-text">使用建议</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#11-故障恢复"><span class="toc-nav-number">11.</span> <span class="toc-nav-text">11.故障恢复</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#12-数据恢复"><span class="toc-nav-number">12.</span> <span class="toc-nav-text">12.数据恢复</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#13-HBase-为什么这么快"><span class="toc-nav-number">13.</span> <span class="toc-nav-text">13.HBase 为什么这么快</span></a></li></ol>
+        
+        </div>
+      </aside>
+    
+
+                
+            <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#HBase" title="HBase">HBase</a>
+                        
+                          <a class="tag" href="/tags/#全面回忆" title="全面回忆">全面回忆</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'left',
+          icon: 'ℬ'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+
+
+<style  type="text/css">
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; GY 2021 
+                    <br>
+                    Powered by 
+                    <a href="https://github.com/dusign/hexo-theme-snail" target="_blank" rel="noopener">
+                        <i>hexo-theme-snail</i>
+                    </a> | 
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0"
+                        width="100px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=dusign&repo=hexo-theme-snail&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- Search -->
+
+<script src="/js/search.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 百度站长 -->
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://gaothink.top/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Search -->
+
+    <script type="text/javascript">      
+        var search_path = "search.xml";
+        if (search_path.length == 0) {
+            search_path = "search.xml";
+        }
+    var path = "/" + search_path;
+    searchFunc(path, 'local-search-input', 'local-search-result');
+    </script>
+
+
+<!-- busuanzi -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+	<a id="rocket" href="#top" class=""></a>
+	<script type="text/javascript" src="/js/totop.js?v=1.0.0" async=""></script>
+    <script type="text/javascript" src="/js/toc.js?v=1.0.0" async=""></script>
+	
+    
+        <!-- background effects line -->
+        
+
+        
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+        
+
+        <!-- background effects end -->
+    
+
+    <!--<script size="50" alpha='0.3' zIndex="-999" src="/js/ribbonStatic.js"></script>-->
+    
+        <script src="/js/ribbonDynamic.js"></script>
+    
+	
+	
+        <script type="text/javascript" src="/js/fancybox/jquery.fancybox.min.js"></script>
+        <script type="text/javascript" src="/js/wrapImage.js"></script>
+    
+	
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>

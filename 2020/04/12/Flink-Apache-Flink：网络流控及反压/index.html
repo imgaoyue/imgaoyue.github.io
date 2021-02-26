@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="baidu-site-verification" content="uHZGT15IXQ" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="GaoThink·思考志">
+    <meta name="keyword"  content="大数据,Bigdata,Linux,CDH">
+    <link rel="shortcut icon" href="/img/ironman-draw.png">
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <!--<link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>-->
+   
+	<title>
+        
+          Apache Flink：网络流控及反压 - GaoThink·思考志
+        
+    </title>
+
+    <link rel="canonical" href="http://gaothink.top/2020/04/12/Flink-Apache-Flink：网络流控及反压/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS --> 
+    
+        
+<link rel="stylesheet" href="/css/dusign-light.css">
+
+        
+<link rel="stylesheet" href="/css/dusign-common-light.css">
+
+        
+<link rel="stylesheet" href="/css/font-awesome.css">
+
+        
+<link rel="stylesheet" href="/css/toc.css">
+
+        <!-- background effects end -->
+    
+    
+	<!-- fancybox support -->
+    
+      
+<link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css">
+
+    
+	
+    <!-- Pygments Highlight CSS -->
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+
+    
+<link rel="stylesheet" href="/css/widget.css">
+
+
+    
+<link rel="stylesheet" href="/css/rocket.css">
+
+
+    
+<link rel="stylesheet" href="/css/signature.css">
+
+
+    
+<link rel="stylesheet" href="/css/fonts.googleapis.css">
+
+
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <!-- photography -->
+    
+<link rel="stylesheet" href="/css/photography.css">
+
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+	
+	
+	<!-- Baidu Tongji -->
+    
+    <script>
+        // dynamic User by Hux
+        var _baId = '3c93829ba3b988ba61d1e9a4688967d3';
+    
+        // Originial
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "//hm.baidu.com/hm.js?" + _baId;
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+	
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- background effects start -->
+    
+    <!-- background effects end -->
+
+	<!-- Modified by Yu-Hsuan Yen -->
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        
+            
+                background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('')
+                /*post*/
+            
+        
+    }
+    
+</style>
+
+<header class="intro-header" >
+    <!-- Signature -->
+    <div id="signature">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                
+                    <div class="post-heading">
+                        <div class="tags">
+                            
+                              <a class="tag" href="/tags/#Flink" title="Flink">Flink</a>
+                            
+                        </div>
+                        <h1>Apache Flink：网络流控及反压</h1>
+                        <h2 class="subheading"></h2>
+                        <span class="meta">
+                            Posted by GY on
+                            2020-04-12
+                        </span>
+
+                        
+                            <div class="blank_box"></div>
+                            <span class="meta">
+                                Words <span class="post-count">3.7k</span> and
+                                Reading Time <span class="post-count">13</span> Minutes
+                            </span>
+                            <div class="blank_box"></div>
+                            <!-- 不蒜子统计 start -->
+                            <span class="meta">
+                                Viewed <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span> Times
+                            </span>
+                            <!-- 不蒜子统计 end -->
+                        
+
+                    </div>
+                
+
+                </div>
+            </div>
+        </div>      
+    </div>
+
+    
+    <div class="waveWrapper">
+        <div class="wave wave_before" style="background-image: url('/img/wave-light.png')"></div>
+        <div class="wave wave_after" style="background-image: url('/img/wave-light.png')"></div>
+    </div>
+    
+</header>
+
+	
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">GaoThink</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archive/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/categories/">Categories</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h1 id="Apache-Flink：网络流控及反压"><a href="#Apache-Flink：网络流控及反压" class="headerlink" title="Apache Flink：网络流控及反压"></a>Apache Flink：网络流控及反压</h1><p>原文链接：<a href="https://ververica.cn/developers/advanced-tutorial-2-analysis-of-network-flow-control-and-back-pressure/" target="_blank" rel="noopener">《Apache Flink ：网络流控及反压剖析》</a></p>
+<h2 id="网络流控的概念与背景"><a href="#网络流控的概念与背景" class="headerlink" title="网络流控的概念与背景"></a>网络流控的概念与背景</h2><h3 id="为什么需要网络流控"><a href="#为什么需要网络流控" class="headerlink" title="为什么需要网络流控"></a>为什么需要网络流控</h3><p><img src="https://ververica.cn/wp-content/uploads/2019/12/1-%E5%B9%BB%E7%81%AF%E7%89%8704-1024x576.png" alt="img"></p>
+<p>首先我们可以看下这张最精简的网络流控的图，Producer 的吞吐率是 2MB/s，Consumer 是 1MB/s，这个时候我们就会发现在网络通信的时候我们的 Producer 的速度是比 Consumer 要快的，有 1MB/s 的这样的速度差，假定我们两端都有一个 Buffer，Producer 端有一个发送用的 Send Buffer，Consumer 端有一个接收用的 Receive Buffer，在网络端的吞吐率是 2MB/s，过了 5s 后我们的 Receive Buffer 可能就撑不住了，这时候会面临两种情况：</p>
+<ol>
+<li>如果 Receive Buffer 是有界的，这时候新到达的数据就只能被丢弃掉了。</li>
+<li>如果 Receive Buffer 是无界的，Receive Buffer 会持续的扩张，最终会导致 Consumer 的内存耗尽。</li>
+</ol>
+<h3 id="网络流控的实现：静态限速"><a href="#网络流控的实现：静态限速" class="headerlink" title="网络流控的实现：静态限速"></a>网络流控的实现：静态限速</h3><p><img src="https://ververica.cn/wp-content/uploads/2019/12/2-%E5%B9%BB%E7%81%AF%E7%89%8705-1024x576.png" alt="img"></p>
+<p>为了解决这个问题，我们就需要网络流控来解决上下游速度差的问题，传统的做法可以在 Producer 端实现一个类似 Rate Limiter 这样的静态限流，Producer 的发送速率是 2MB/s，但是经过限流这一层后，往 Send Buffer 去传数据的时候就会降到 1MB/s 了，这样的话 Producer 端的发送速率跟 Consumer 端的处理速率就可以匹配起来了，就不会导致上述问题。但是这个解决方案有两点限制：</p>
+<ol>
+<li>事先无法预估 Consumer 到底能承受多大的速率</li>
+<li>Consumer 的承受能力通常会动态地波动</li>
+</ol>
+<h3 id="网络流控的实现：动态反馈-自动反压"><a href="#网络流控的实现：动态反馈-自动反压" class="headerlink" title="网络流控的实现：动态反馈/自动反压"></a>网络流控的实现：动态反馈/自动反压</h3><p><img src="https://ververica.cn/wp-content/uploads/2019/12/3-%E5%B9%BB%E7%81%AF%E7%89%8706-1024x576.png" alt="img"></p>
+<p>针对静态限速的问题我们就演进到了动态反馈（自动反压）的机制，我们需要 Consumer 能够及时的给 Producer 做一个 feedback，即告知 Producer 能够承受的速率是多少。动态反馈分为两种：</p>
+<ol>
+<li>负反馈：接受速率小于发送速率时发生，告知 Producer 降低发送速率</li>
+<li>正反馈：发送速率小于接收速率时发生，告知 Producer 可以把发送速率提上来</li>
+</ol>
+<hr>
+<h2 id="Flink-的网络传输的架构"><a href="#Flink-的网络传输的架构" class="headerlink" title="Flink 的网络传输的架构"></a>Flink 的网络传输的架构</h2><p><img src="https://ververica.cn/wp-content/uploads/2019/12/6-%E5%B9%BB%E7%81%AF%E7%89%8710-1024x576.png" alt="img"></p>
+<p>这张图就体现了 Flink 在做网络传输的时候基本的数据的流向，发送端在发送网络数据前要经历自己内部的一个流程，会有一个自己的 Network Buffer，在底层用 Netty 去做通信，Netty 这一层又有属于自己的 ChannelOutbound Buffer，因为最终是要通过 Socket 做网络请求的发送，所以在 Socket 也有自己的 Send Buffer，同样在接收端也有对应的三级 Buffer。学过计算机网络的时候我们应该了解到，TCP 是自带流量控制的。实际上 Flink （before V1.5）就是通过 TCP 的流控机制来实现 feedback 的。</p>
+<hr>
+<h2 id="TCP-流控机制"><a href="#TCP-流控机制" class="headerlink" title="TCP 流控机制"></a>TCP 流控机制</h2><p>根据下图我们来简单的回顾一下 TCP 包的格式结构。首先，他有 Sequence number 这样一个机制给每个数据包做一个编号，还有 ACK number 这样一个机制来确保 TCP 的数据传输是可靠的，除此之外还有一个很重要的部分就是 Window Size，接收端在回复消息的时候会通过 Window Size 告诉发送端还可以发送多少数据。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/7-%E5%B9%BB%E7%81%AF%E7%89%8713-1024x576.png" alt="img"></p>
+<p>接下来我们来简单看一下这个过程。</p>
+<h4 id="TCP-流控：滑动窗口"><a href="#TCP-流控：滑动窗口" class="headerlink" title="TCP 流控：滑动窗口"></a>TCP 流控：滑动窗口</h4><p><img src="https://ververica.cn/wp-content/uploads/2019/12/8-%E5%B9%BB%E7%81%AF%E7%89%8714-1024x576.png" alt="img"></p>
+<p>TCP 的流控就是基于滑动窗口的机制，现在我们有一个 Socket 的发送端和一个 Socket 的接收端，目前我们的发送端的速率是我们接收端的 3 倍，这样会发生什么样的一个情况呢？假定初始的时候我们发送的 window 大小是 3，然后我们接收端的 window 大小是固定的，就是接收端的 Buffer 大小为 5。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/9-%E5%B9%BB%E7%81%AF%E7%89%8715-1024x576.png" alt="img"></p>
+<p>首先，发送端会一次性发 3 个 packets，将 1，2，3 发送给接收端，接收端接收到后会将这 3 个 packets 放到 Buffer 里去。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/10-%E5%B9%BB%E7%81%AF%E7%89%8716-1024x576.png" alt="img"></p>
+<p>接收端一次消费 1 个 packet，这时候 1 就已经被消费了，然后我们看到接收端的滑动窗口会往前滑动一格，这时候 2，3 还在 Buffer 当中 而 4，5，6 是空出来的，所以接收端会给发送端发送 ACK = 4 ，代表发送端可以从 4 开始发送，同时会将 window 设置为 3 （Buffer 的大小 5 减去已经存下的 2 和 3），发送端接收到回应后也会将他的滑动窗口向前移动到 4，5，6。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/11-%E5%B9%BB%E7%81%AF%E7%89%8717-1024x576.png" alt="img"></p>
+<p>这时候发送端将 4，5，6 发送，接收端也能成功的接收到 Buffer 中去。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/12-%E5%B9%BB%E7%81%AF%E7%89%8718-1024x576.png" alt="img"></p>
+<p>到这一阶段后，接收端就消费到 2 了，同样他的窗口也会向前滑动一个，这时候他的 Buffer 就只剩一个了，于是向发送端发送 ACK = 7、window = 1。发送端收到之后滑动窗口也向前移，但是这个时候就不能移动 3 格了，虽然发送端的速度允许发 3 个 packets 但是 window 传值已经告知只能接收一个，所以他的滑动窗口就只能往前移一格到 7 ，这样就达到了限流的效果，发送端的发送速度从 3 降到 1。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/13-%E5%B9%BB%E7%81%AF%E7%89%8719-1024x576.png" alt="img"></p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/14-%E5%B9%BB%E7%81%AF%E7%89%8720-1024x576.png" alt="img"></p>
+<p>我们再看一下这种情况，这时候发送端将 7 发送后，接收端接收到，但是由于接收端的消费出现问题，一直没有从 Buffer 中去取，这时候接收端向发送端发送 ACK = 8、window = 0 ，由于这个时候 window = 0，发送端是不能发送任何数据，也就会使发送端的发送速度降为 0。这个时候发送端不发送任何数据了，接收端也不进行任何的反馈了，那么如何知道消费端又开始消费了呢？</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/15-%E5%B9%BB%E7%81%AF%E7%89%8721-1024x576.png" alt="img"></p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/16-%E5%B9%BB%E7%81%AF%E7%89%8722-1024x576.png" alt="img"></p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/17-%E5%B9%BB%E7%81%AF%E7%89%8723-1024x576.png" alt="img"></p>
+<p>TCP 当中有一个 ZeroWindowProbe 的机制，发送端会定期的发送 1 个字节的探测消息，这时候接收端就会把 window 的大小进行反馈。当接收端的消费恢复了之后，接收到探测消息就可以将 window 反馈给发送端端了从而恢复整个流程。TCP 就是通过这样一个滑动窗口的机制实现 feedback。</p>
+<hr>
+<h2 id="Flink-TCP-based-反压机制（before-V1-5）"><a href="#Flink-TCP-based-反压机制（before-V1-5）" class="headerlink" title="Flink TCP-based 反压机制（before V1.5）"></a>Flink TCP-based 反压机制（before V1.5）</h2><p><img src="https://ververica.cn/wp-content/uploads/2019/12/21-%E5%B9%BB%E7%81%AF%E7%89%8728-1024x576.png" alt="img"></p>
+<p><strong>反压的传播实际上是分为两个阶段的</strong>，对应着上面的执行图，我们一共涉及 3 个 TaskManager，在每个 TaskManager 里面都有相应的 Task 在执行，还有负责接收数据的 InputGate，发送数据的 ResultPartition，这就是一个最基本的数据传输的通道。在这时候假设最下游的 Task （Sink）出现了问题，处理速度降了下来这时候是如何将这个压力反向传播回去呢？这时候就分为两种情况：</p>
+<ul>
+<li>跨 TaskManager ，反压如何从 InputGate 传播到 ResultPartition</li>
+<li>TaskManager 内，反压如何从 ResultPartition 传播到 InputGate</li>
+</ul>
+<h3 id="跨-TaskManager-数据传输"><a href="#跨-TaskManager-数据传输" class="headerlink" title="跨 TaskManager 数据传输"></a>跨 TaskManager 数据传输</h3><p><img src="https://ververica.cn/wp-content/uploads/2019/12/22-%E5%B9%BB%E7%81%AF%E7%89%8729-1024x576.png" alt="img"></p>
+<p>前面提到，发送数据需要 ResultPartition，在每个 ResultPartition 里面会有分区 ResultSubPartition，中间还会有一些关于内存管理的 Buffer。</p>
+<p>对于一个 TaskManager 来说会有一个统一的 Network BufferPool 被所有的 Task 共享，在初始化时会从 Off-heap Memory 中申请内存，申请到内存的后续内存管理就是同步 Network BufferPool 来进行的，不需要依赖 JVM GC 的机制去释放。有了 Network BufferPool 之后可以为每一个 ResultSubPartition 创建 Local BufferPool 。</p>
+<p>如上图左边的 TaskManager 的 Record Writer 写了 <1，2> 这个两个数据进来，因为 ResultSubPartition 初始化的时候为空，没有 Buffer 用来接收，就会向 Local BufferPool 申请内存，这时 Local BufferPool 也没有足够的内存于是将请求转到 Network BufferPool，最终将申请到的 Buffer 按原链路返还给 ResultSubPartition，<1，2> 这个两个数据就可以被写入了。之后会将 ResultSubPartition 的 Buffer 拷贝到 Netty 的 Buffer 当中最终拷贝到 Socket 的 Buffer 将消息发送出去。然后接收端按照类似的机制去处理将消息消费掉。</p>
+<p>接下来我们来模拟上下游处理速度不匹配的场景，发送端的速率为 2，接收端的速率为 1，看一下反压的过程是怎样的。</p>
+<h3 id="跨-TaskManager-反压过程"><a href="#跨-TaskManager-反压过程" class="headerlink" title="跨 TaskManager 反压过程"></a>跨 TaskManager 反压过程</h3><p><img src="https://ververica.cn/wp-content/uploads/2019/12/23-%E5%B9%BB%E7%81%AF%E7%89%8730-1024x576.png" alt="img"></p>
+<p>因为速度不匹配就会导致一段时间后 InputChannel 的 Buffer 被用尽，于是他会向 Local BufferPool 申请新的 Buffer ，这时候可以看到 Local BufferPool 中的一个 Buffer 就会被标记为 Used。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/24-%E5%B9%BB%E7%81%AF%E7%89%8731-1024x576.png" alt="img"></p>
+<p>发送端还在持续以不匹配的速度发送数据，然后就会导致 InputChannel 向 Local BufferPool 申请 Buffer 的时候发现没有可用的 Buffer 了，这时候就只能向 Network BufferPool 去申请，当然每个 Local BufferPool 都有最大的可用的 Buffer，防止一个 Local BufferPool 把 Network BufferPool 耗尽。这时候看到 Network BufferPool 还是有可用的 Buffer 可以向其申请。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/25-%E5%B9%BB%E7%81%AF%E7%89%8732-1024x576.png" alt="img"></p>
+<p>一段时间后，发现 Network BufferPool 没有可用的 Buffer，或是 Local BufferPool 的最大可用 Buffer 到了上限无法向 Network BufferPool 申请，没有办法去读取新的数据，这时 Netty AutoRead 就会被禁掉，Netty 就不会从 Socket 的 Buffer 中读取数据了。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/26-%E5%B9%BB%E7%81%AF%E7%89%8733-1024x576.png" alt="img"></p>
+<p>显然，再过不久 Socket 的 Buffer 也被用尽，这时就会将 Window = 0 发送给发送端（前文提到的 TCP 滑动窗口的机制）。这时发送端的 Socket 就会停止发送。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/27-%E5%B9%BB%E7%81%AF%E7%89%8734-1024x576.png" alt="img"></p>
+<p>很快发送端的 Socket 的 Buffer 也被用尽，Netty 检测到 Socket 无法写了之后就会停止向 Socket 写数据。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/28-%E5%B9%BB%E7%81%AF%E7%89%8735-1024x576.png" alt="img"></p>
+<p>Netty 停止写了之后，所有的数据就会阻塞在 Netty 的 Buffer 当中了，但是 Netty 的 Buffer 是无界的，可以通过 Netty 的水位机制中的 high watermark 控制他的上界。当超过了 high watermark，Netty 就会将其 channel 置为不可写，ResultSubPartition 在写之前都会检测 Netty 是否可写，发现不可写就会停止向 Netty 写数据。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/29-%E5%B9%BB%E7%81%AF%E7%89%8736-1024x576.png" alt="img"></p>
+<p>这时候所有的压力都来到了 ResultSubPartition，和接收端一样他会不断的向 Local BufferPool 和 Network BufferPool 申请内存。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/30-%E5%B9%BB%E7%81%AF%E7%89%8738-1024x576.png" alt="img"></p>
+<p>Local BufferPool 和 Network BufferPool 都用尽后整个 Operator 就会停止写数据，达到跨 TaskManager 的反压。</p>
+<h3 id="TaskManager-内反压过程"><a href="#TaskManager-内反压过程" class="headerlink" title="TaskManager 内反压过程"></a>TaskManager 内反压过程</h3><p>了解了跨 TaskManager 反压过程后再来看 TaskManager 内反压过程就更好理解了，下游的 TaskManager 反压导致本 TaskManager 的 ResultSubPartition 无法继续写入数据，于是 Record Writer 的写也被阻塞住了，因为 Operator 需要有输入才能有计算后的输出，输入跟输出都是在同一线程执行， Record Writer 阻塞了，Record Reader 也停止从 InputChannel 读数据，这时上游的 TaskManager 还在不断地发送数据，最终将这个 TaskManager 的 Buffer 耗尽。具体流程可以参考下图，这就是 TaskManager 内的反压过程。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/31-%E5%B9%BB%E7%81%AF%E7%89%8739-1024x576.png" alt="img"></p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/32-%E5%B9%BB%E7%81%AF%E7%89%8740-1024x576.png" alt="img"></p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/33-%E5%B9%BB%E7%81%AF%E7%89%8741-1024x576.png" alt="img"></p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/34-%E5%B9%BB%E7%81%AF%E7%89%8742-1024x576.png" alt="img"></p>
+<hr>
+<h2 id="Flink-Credit-based-反压机制（since-V1-5）"><a href="#Flink-Credit-based-反压机制（since-V1-5）" class="headerlink" title="Flink Credit-based 反压机制（since V1.5）"></a>Flink Credit-based 反压机制（since V1.5）</h2><h3 id="TCP-based-反压的弊端"><a href="#TCP-based-反压的弊端" class="headerlink" title="TCP-based 反压的弊端"></a>TCP-based 反压的弊端</h3><p><img src="https://ververica.cn/wp-content/uploads/2019/12/35-%E5%B9%BB%E7%81%AF%E7%89%8744-1024x576.png" alt="img"></p>
+<p>在介绍 Credit-based 反压机制之前，先分析下 TCP 反压有哪些弊端。</p>
+<ul>
+<li>在一个 TaskManager 中可能要执行多个 Task，如果多个 Task 的数据最终都要传输到下游的同一个 TaskManager 就会复用同一个 Socket 进行传输，这个时候如果单个 Task 产生反压，就会导致复用的 Socket 阻塞，其余的 Task 也无法使用传输，checkpoint barrier 也无法发出导致下游执行 checkpoint 的延迟增大。</li>
+<li>依赖最底层的 TCP 去做流控，会导致反压传播路径太长，导致生效的延迟比较大。</li>
+</ul>
+<h3 id="引入-Credit-based-反压"><a href="#引入-Credit-based-反压" class="headerlink" title="引入 Credit-based 反压"></a>引入 Credit-based 反压</h3><p>这个机制简单的理解起来就是在 Flink 层面实现类似 TCP 流控的反压机制来解决上述的弊端，Credit 可以类比为 TCP 的 Window 机制。</p>
+<h3 id="Credit-based-反压过程"><a href="#Credit-based-反压过程" class="headerlink" title="Credit-based 反压过程"></a>Credit-based 反压过程</h3><p><img src="https://ververica.cn/wp-content/uploads/2019/12/36-%E5%B9%BB%E7%81%AF%E7%89%8746-1024x576.png" alt="img"></p>
+<p>如图所示在 Flink 层面实现反压机制，就是每一次 ResultSubPartition 向 InputChannel 发送消息的时候都会发送一个 backlog size 告诉下游准备发送多少消息，下游就会去计算有多少的 Buffer 去接收消息，算完之后如果有充足的 Buffer 就会返还给上游一个 Credit 告知他可以发送消息（图上两个 ResultSubPartition 和 InputChannel 之间是虚线是因为最终还是要通过 Netty 和 Socket 去通信），下面我们看一个具体示例。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/37-%E5%B9%BB%E7%81%AF%E7%89%8747-2-1024x576.png" alt="img"></p>
+<p>假设我们上下游的速度不匹配，上游发送速率为 2，下游接收速率为 1，可以看到图上在 ResultSubPartition 中累积了两条消息，10 和 11， backlog 就为 2，这时就会将发送的数据 <8,9> 和 backlog = 2 一同发送给下游。下游收到了之后就会去计算是否有 2 个 Buffer 去接收，可以看到 InputChannel 中已经不足了这时就会从 Local BufferPool 和 Network BufferPool 申请，好在这个时候 Buffer 还是可以申请到的。</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/38-%E5%B9%BB%E7%81%AF%E7%89%8748-2-1024x576.png" alt="img"></p>
+<p>过了一段时间后由于上游的发送速率要大于下游的接受速率，下游的 TaskManager 的 Buffer 已经到达了申请上限，这时候下游就会向上游返回 Credit = 0，ResultSubPartition 接收到之后就不会向 Netty 去传输数据，上游 TaskManager 的 Buffer 也很快耗尽，达到反压的效果，这样在 ResultSubPartition 层就能感知到反压，不用通过 Socket 和 Netty 一层层地向上反馈，降低了反压生效的延迟。同时也不会将 Socket 去阻塞，解决了由于一个 Task 反压导致 TaskManager 和 TaskManager 之间的 Socket 阻塞的问题。</p>
+<h2 id="总结与思考"><a href="#总结与思考" class="headerlink" title="总结与思考"></a>总结与思考</h2><h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ul>
+<li>网络流控是为了在上下游速度不匹配的情况下，防止下游出现过载</li>
+<li>网络流控有静态限速和动态反压两种手段</li>
+<li>Flink 1.5 之前是基于 TCP 流控 + bounded buffer 实现反压</li>
+<li>Flink 1.5 之后实现了自己托管的 credit – based 流控机制，在应用层模拟 TCP 的流控机制</li>
+</ul>
+<h3 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h3><p>有了动态反压，静态限速是不是完全没有作用了？</p>
+<p><img src="https://ververica.cn/wp-content/uploads/2019/12/39-%E5%B9%BB%E7%81%AF%E7%89%8752-1-1024x576.png" alt="img"></p>
+<p>实际上动态反压不是万能的，我们流计算的结果最终是要输出到一个外部的存储（Storage），外部数据存储到 Sink 端的反压是不一定会触发的，这要取决于外部存储的实现，像 Kafka 这样是实现了限流限速的消息中间件可以通过协议将反压反馈给 Sink 端，但是像 ES 无法将反压进行传播反馈给 Sink 端，这种情况下为了防止外部存储在大的数据量下被打爆，我们就可以通过静态限速的方式在 Source 端去做限流。所以说动态反压并不能完全替代静态限速的，需要根据合适的场景去选择处理方案。</p>
+
+                
+                <hr>
+                <!-- Pager -->
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/04/13/Flink-Flink-on-YARN：一张图轻松掌握基础架构与启动流程/" data-toggle="tooltip" data-placement="top" title="Flink on YARN：一张图轻松掌握基础架构与启动流程">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/04/11/Flink-Apache-Flink：概念、架构及原理/" data-toggle="tooltip" data-placement="top" title="Apache Flink：概念、架构及原理">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                <!-- tip start -->
+                
+                <div class="comment_notes_blank"></div>
+                <div class="visitor_notice">
+                    <img 
+                        src="/img/notice.png" 
+                        alt="notice"
+                        title="notice"/>
+                    <p class="notice">
+                        除非注明，本博文章均为原创，转载请以链接形式标明本文地址.
+                    </p>
+                </div>
+                
+
+                
+                <div class="comment_notes">
+                    <p>
+                        
+                    </p>
+                </div>
+                
+                <!-- tip end -->
+
+                <!-- Music start-->
+                
+                <!-- Music end -->
+
+                <!-- Sharing -->
+                
+                <!-- Sharing -->
+
+                <!-- gitment start -->
+                
+                <!-- gitment end -->
+			
+			<!-- valine_comments start -->	
+						
+			<!-- valine_comments end -->
+			
+			<!-- 来必力City版安装代码 -->
+                
+                <hr>
+                <div id="lv-container" data-id="city" data-uid="MTAyMC80OTY0OC8yNjEzOQ==">
+                    <script type="text/javascript">
+                   (function(d, s) {
+                       var j, e = d.getElementsByTagName(s)[0];
+
+                       if (typeof LivereTower === 'function') { return; }
+
+                       j = d.createElement(s);
+                       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+                       j.async = true;
+
+                       e.parentNode.insertBefore(j, e);
+                   })(document, 'script');
+                    </script>
+                <noscript> 为正常使用来必力评论功能请激活JavaScript</noscript>
+                </div>
+                
+                <!-- City版安装代码已完成 -->
+
+            </div>
+            
+
+			
+            <!-- Tabe of Content -->
+            <!-- Table of Contents -->
+
+    
+      <aside id="sidebar">
+        <div id="toc" class="toc-article">
+        <strong class="toc-title">Contents</strong>
+        
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#Apache-Flink：网络流控及反压"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">Apache Flink：网络流控及反压</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#网络流控的概念与背景"><span class="toc-nav-number">1.1.</span> <span class="toc-nav-text">网络流控的概念与背景</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#为什么需要网络流控"><span class="toc-nav-number">1.1.1.</span> <span class="toc-nav-text">为什么需要网络流控</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#网络流控的实现：静态限速"><span class="toc-nav-number">1.1.2.</span> <span class="toc-nav-text">网络流控的实现：静态限速</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#网络流控的实现：动态反馈-自动反压"><span class="toc-nav-number">1.1.3.</span> <span class="toc-nav-text">网络流控的实现：动态反馈&#x2F;自动反压</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Flink-的网络传输的架构"><span class="toc-nav-number">1.2.</span> <span class="toc-nav-text">Flink 的网络传输的架构</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#TCP-流控机制"><span class="toc-nav-number">1.3.</span> <span class="toc-nav-text">TCP 流控机制</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#TCP-流控：滑动窗口"><span class="toc-nav-number">1.3.0.1.</span> <span class="toc-nav-text">TCP 流控：滑动窗口</span></a></li></ol></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Flink-TCP-based-反压机制（before-V1-5）"><span class="toc-nav-number">1.4.</span> <span class="toc-nav-text">Flink TCP-based 反压机制（before V1.5）</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#跨-TaskManager-数据传输"><span class="toc-nav-number">1.4.1.</span> <span class="toc-nav-text">跨 TaskManager 数据传输</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#跨-TaskManager-反压过程"><span class="toc-nav-number">1.4.2.</span> <span class="toc-nav-text">跨 TaskManager 反压过程</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#TaskManager-内反压过程"><span class="toc-nav-number">1.4.3.</span> <span class="toc-nav-text">TaskManager 内反压过程</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Flink-Credit-based-反压机制（since-V1-5）"><span class="toc-nav-number">1.5.</span> <span class="toc-nav-text">Flink Credit-based 反压机制（since V1.5）</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#TCP-based-反压的弊端"><span class="toc-nav-number">1.5.1.</span> <span class="toc-nav-text">TCP-based 反压的弊端</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#引入-Credit-based-反压"><span class="toc-nav-number">1.5.2.</span> <span class="toc-nav-text">引入 Credit-based 反压</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Credit-based-反压过程"><span class="toc-nav-number">1.5.3.</span> <span class="toc-nav-text">Credit-based 反压过程</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#总结与思考"><span class="toc-nav-number">1.6.</span> <span class="toc-nav-text">总结与思考</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#总结"><span class="toc-nav-number">1.6.1.</span> <span class="toc-nav-text">总结</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#思考"><span class="toc-nav-number">1.6.2.</span> <span class="toc-nav-text">思考</span></a></li></ol></li></ol></li></ol>
+        
+        </div>
+      </aside>
+    
+
+                
+            <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#Flink" title="Flink">Flink</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'left',
+          icon: 'ℬ'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+
+
+<style  type="text/css">
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; GY 2021 
+                    <br>
+                    Powered by 
+                    <a href="https://github.com/dusign/hexo-theme-snail" target="_blank" rel="noopener">
+                        <i>hexo-theme-snail</i>
+                    </a> | 
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0"
+                        width="100px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=dusign&repo=hexo-theme-snail&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- Search -->
+
+<script src="/js/search.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 百度站长 -->
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://gaothink.top/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Search -->
+
+    <script type="text/javascript">      
+        var search_path = "search.xml";
+        if (search_path.length == 0) {
+            search_path = "search.xml";
+        }
+    var path = "/" + search_path;
+    searchFunc(path, 'local-search-input', 'local-search-result');
+    </script>
+
+
+<!-- busuanzi -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+	<a id="rocket" href="#top" class=""></a>
+	<script type="text/javascript" src="/js/totop.js?v=1.0.0" async=""></script>
+    <script type="text/javascript" src="/js/toc.js?v=1.0.0" async=""></script>
+	
+    
+        <!-- background effects line -->
+        
+
+        
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+        
+
+        <!-- background effects end -->
+    
+
+    <!--<script size="50" alpha='0.3' zIndex="-999" src="/js/ribbonStatic.js"></script>-->
+    
+        <script src="/js/ribbonDynamic.js"></script>
+    
+	
+	
+        <script type="text/javascript" src="/js/fancybox/jquery.fancybox.min.js"></script>
+        <script type="text/javascript" src="/js/wrapImage.js"></script>
+    
+	
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>

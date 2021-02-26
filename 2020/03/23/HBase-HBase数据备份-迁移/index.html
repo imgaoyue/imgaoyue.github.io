@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="baidu-site-verification" content="uHZGT15IXQ" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="GaoThink·思考志">
+    <meta name="keyword"  content="大数据,Bigdata,Linux,CDH">
+    <link rel="shortcut icon" href="/img/ironman-draw.png">
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <!--<link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>-->
+   
+	<title>
+        
+          HBase数据备份&amp;迁移 - GaoThink·思考志
+        
+    </title>
+
+    <link rel="canonical" href="http://gaothink.top/2020/03/23/HBase-HBase数据备份-迁移/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS --> 
+    
+        
+<link rel="stylesheet" href="/css/dusign-light.css">
+
+        
+<link rel="stylesheet" href="/css/dusign-common-light.css">
+
+        
+<link rel="stylesheet" href="/css/font-awesome.css">
+
+        
+<link rel="stylesheet" href="/css/toc.css">
+
+        <!-- background effects end -->
+    
+    
+	<!-- fancybox support -->
+    
+      
+<link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css">
+
+    
+	
+    <!-- Pygments Highlight CSS -->
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+
+    
+<link rel="stylesheet" href="/css/widget.css">
+
+
+    
+<link rel="stylesheet" href="/css/rocket.css">
+
+
+    
+<link rel="stylesheet" href="/css/signature.css">
+
+
+    
+<link rel="stylesheet" href="/css/fonts.googleapis.css">
+
+
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <!-- photography -->
+    
+<link rel="stylesheet" href="/css/photography.css">
+
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+	
+	
+	<!-- Baidu Tongji -->
+    
+    <script>
+        // dynamic User by Hux
+        var _baId = '3c93829ba3b988ba61d1e9a4688967d3';
+    
+        // Originial
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "//hm.baidu.com/hm.js?" + _baId;
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+	
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- background effects start -->
+    
+    <!-- background effects end -->
+
+	<!-- Modified by Yu-Hsuan Yen -->
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        
+            
+                background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('')
+                /*post*/
+            
+        
+    }
+    
+</style>
+
+<header class="intro-header" >
+    <!-- Signature -->
+    <div id="signature">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                
+                    <div class="post-heading">
+                        <div class="tags">
+                            
+                              <a class="tag" href="/tags/#HBase" title="HBase">HBase</a>
+                            
+                              <a class="tag" href="/tags/#CDH" title="CDH">CDH</a>
+                            
+                        </div>
+                        <h1>HBase数据备份&amp;迁移</h1>
+                        <h2 class="subheading"></h2>
+                        <span class="meta">
+                            Posted by GY on
+                            2020-03-23
+                        </span>
+
+                        
+                            <div class="blank_box"></div>
+                            <span class="meta">
+                                Words <span class="post-count">2.1k</span> and
+                                Reading Time <span class="post-count">7</span> Minutes
+                            </span>
+                            <div class="blank_box"></div>
+                            <!-- 不蒜子统计 start -->
+                            <span class="meta">
+                                Viewed <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span> Times
+                            </span>
+                            <!-- 不蒜子统计 end -->
+                        
+
+                    </div>
+                
+
+                </div>
+            </div>
+        </div>      
+    </div>
+
+    
+    <div class="waveWrapper">
+        <div class="wave wave_before" style="background-image: url('/img/wave-light.png')"></div>
+        <div class="wave wave_after" style="background-image: url('/img/wave-light.png')"></div>
+    </div>
+    
+</header>
+
+	
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">GaoThink</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archive/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/categories/">Categories</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h2 id="记录一次HBase数据的迁移"><a href="#记录一次HBase数据的迁移" class="headerlink" title="记录一次HBase数据的迁移"></a>记录一次HBase数据的迁移</h2><blockquote>
+<p><strong>以下内容基于HBase 2.1.0 - CDH6.2.1版本整理</strong></p>
+</blockquote>
+<h3 id="1-迁移背景"><a href="#1-迁移背景" class="headerlink" title="1.迁移背景"></a>1.迁移背景</h3><p>由于公司一些IOT历史记录数据一直存到阿里云HBASE上，但是使用率不高，所以准备迁移到本地服务器上</p>
+<p>所以有了<code>第一次迁移</code></p>
+<p><strong>阿里云HBASE ➡ 自建CDH</strong></p>
+<p>方式采用阿里的BDS进行迁移</p>
+<p>可参考文章<a href="https://yq.aliyun.com/articles/709857?type=2" target="_blank" rel="noopener">HBase TB级数据规模不停机迁移最佳实践</a></p>
+<p><code>第二次迁移</code>是数据由物理机迁移至ESXI虚拟机，以为更好的利用服务器资源</p>
+<p><strong>物理机CDH ➡ 虚拟机CDH</strong></p>
+<p>当然，因为虚拟机的虚拟硬盘以及虚拟网卡效率底下且会额外占用CPU资源，还需要为CDH的虚拟机做硬盘直通，网卡直通等操作，这些不在本文中过多涉及</p>
+<h3 id="2-迁移方案"><a href="#2-迁移方案" class="headerlink" title="2.迁移方案"></a>2.迁移方案</h3><p>网上找了很多资料、博客</p>
+<p>大概了解了下HBASE数据迁移的几种方式</p>
+<p>主要就分为两大类</p>
+<ul>
+<li>HBase层迁移</li>
+<li>Hadoop层迁移</li>
+</ul>
+<p>因为我这是相当于删除了原有CDH并重新安装ESXI以及在此上面搭建CDH</p>
+<p>所以可以说两个CDH不能进行网络通信，也可以理解为<strong>将HBase进行全量备份，再恢复的过程</strong></p>
+<p>还有HBASE2.X原生去掉了Fix功能，所以涉及到可能需要修复表结构的方案一概Pass掉了</p>
+<p>最后剩下三种方式</p>
+<ol>
+<li>Export/Import方式将表进行导入导出</li>
+<li>Snapshot方式将表进行快照再保存</li>
+<li>保存全部HDFS数据，使用指定HBASE目录的方式进行恢复</li>
+</ol>
+<h3 id="3-迁移步骤"><a href="#3-迁移步骤" class="headerlink" title="3.迁移步骤"></a>3.迁移步骤</h3><h4 id="1-Export-Import方式"><a href="#1-Export-Import方式" class="headerlink" title="1.Export/Import方式"></a>1.Export/Import方式</h4><p>是将HBase表数据转换成Sequence File并dump到HDFS，也涉及Scan表数据，与CopyTable相比，还多<strong>支持不同版本数据的拷贝</strong>，同时它拷贝时不是将HBase数据直接Put到目标集群表，而是先转换成文件，把文件同步到目标集群后再通过Import到线上表。主要有两个阶段：</p>
+<p><strong>Export阶段</strong>: 将原集群表数据Scan并转换成Sequence File到Hdfs上，因Export也是依赖于MR的，如果用到独立的MR集群的话，只要保证在MR集群上关于HBase的配置和原集群一样且能和原集群策略打通(master&amp;regionserver策略），就可直接用Export命令，如果没有独立MR集群，则只能在HBase集群上开MR，若需要同步多个版本数据，可以指定versions参数，否则默认同步最新版本的数据，还可以指定数据起始结束时间，使用如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">output_hdfs_path可以直接是目标集群的hdfs路径，也可以是原集群的HDFS路径，如果需要指定版本号，起始结束时间</span></span><br><span class="line">hbase org.apache.hadoop.hbase.mapreduce.Export &lt;tableName&gt; &lt;ouput_hdfs_path&gt; &lt;versions&gt; &lt;starttime&gt; &lt;endtime&gt;</span><br></pre></td></tr></table></figure>
+<p><strong>Import阶段</strong>:　将原集群Export出的SequenceFile导到目标集群对应表，使用如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">如果原数据是存在原集群HDFS，此处input_hdfs_path可以是原集群的HDFS路径，如果原数据存在目标集群HDFS，则为目标集群的HDFS路径</span></span><br><span class="line">hbase org.apache.hadoop.hbase.mapreduce.Import &lt;tableName&gt; &lt;input_hdfs_path&gt;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>1.因为涉及到Scan表数据，再把数据传到目标集群进行Import操作，而这个Import实际相当于一个批量写入的操作，所以该方式整体效率比较低</p>
+<p>2.通过Export导出的表因为压缩方式的不同，可能会与原表大小不一致</p>
+</blockquote>
+<h4 id="2-Snapshot-（-推荐-）"><a href="#2-Snapshot-（-推荐-）" class="headerlink" title="2.Snapshot （ 推荐 ）"></a>2.Snapshot （ 推荐 ）</h4><p><strong>Snapshot原理</strong></p>
+<p><strong><code>HFile是不会被追加或者修改的</code></strong></p>
+<p>HFile一旦生成，就不会再被改变，只有被拿去合并后，生成了新的HFile，完成自己的使命时才会被删除。</p>
+<p>那如果不删除呢？</p>
+<p>比如说，我今天建了个表开始跑业务，这个表总共生成了10个HFile，每二天又生成一些HFile，并因此触发了合并操作，现在启用的HFile里有一些是老的没被合并的，有一些是新的由合并产生的。如果昨天那10个HFile还在，那我只要让这个表启用原来的这10个HFile，不就回滚到昨天的状态了嘛。依靠的是什么？就是这10个HFile自从诞生之后就不会被改动，连追加都不会。他们像琥珀一样，记录了这个表昨天的所有数据。</p>
+<p>因此，<strong><code>建立Snapshot其实就是把当前所有启用的HFile文件名记录下来，并提醒系统在Compaction时不要删除它们</code></strong>。恢复Snapshot就是重新启用当时的那些HFile。当然这两句话说得不严谨，还有一些细节要处理，比如建Snapshot时要把内存里的东西也存下来先。具体是这样的：</p>
+<blockquote>
+<ul>
+<li><p><strong>建立Snapshot</strong><br>1.Master与RegionServer同步，让他们同时进行MemStore flush<br>2.记录MetaData，即当前表有哪些region，每个region使用的HFile是哪些<br>3.“标记”HFile以防被删除<br><strong>建立Snapshot的过程不需要让表下线</strong></p>
+</li>
+<li><p><strong>恢复Snapshot</strong><br>根据Snapshot对应的MetaData恢复各个region，该表需要先下线</p>
+</li>
+</ul>
+</blockquote>
+<p>Snapshot只是对元数据信息克隆，不拷贝实际数据文件，所以生成速度很快</p>
+<p>创建的snapshot放在目录<code>/hbase/.hbase-snapshot/TABLE_NAME</code>下， 包含</p>
+<p>.snapshotinfo文件和data.manifest文件</p>
+<figure class="highlight kotlin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">.snapshotinfo<span class="comment">// 这里记录了当前快照的元信息</span></span><br><span class="line"><span class="keyword">data</span>.manifest<span class="comment">// 这里记录了源表的元信息，region分裂信息，以及引用目标hfile信息</span></span><br></pre></td></tr></table></figure>
+<p><strong>Snapshot操作</strong></p>
+<ul>
+<li>查看快照</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">hbase&gt;</span><span class="bash"> list_snapshots</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>删除快照</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">hbase&gt;</span><span class="bash"> delete_snapshot <span class="string">'快照名'</span></span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>导出快照</li>
+</ul>
+<figure class="highlight haml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">hbase org.apache.hadoop.hbase.snapshot.ExportSnapshot \</span><br><span class="line">-<span class="ruby">snapshot snapshot_src_table \ </span></span><br><span class="line"><span class="ruby">-copy-from <span class="symbol">hdfs:</span>/<span class="regexp">/src-hbase-root-dir/hbase</span> \</span></span><br><span class="line"><span class="ruby">-copy-to <span class="symbol">hdfs:</span>/<span class="regexp">/dst-hbase-root-dir/hbase</span> \</span></span><br><span class="line"><span class="ruby">-mappers <span class="number">20</span> \</span></span><br><span class="line"><span class="ruby">-bandwidth <span class="number">1024</span></span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>快照可以导出到目标集群也可以导出到本地</p>
+<p>导出成功之后可以去快照导出的文件夹将生产的文件Get到本地做备份，或者迁移到其他集群</p>
+<p>只需将生成的<code>.hbase-snapshot</code>目录以及<code>archive</code>目录拷贝到目标集群即可在快照列表中看到该快照</p>
+<p><strong>注意拷贝文件的权限</strong></p>
+</blockquote>
+<ul>
+<li>恢复一张表</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">hbase&gt;</span><span class="bash"> <span class="built_in">disable</span> <span class="string">'myTable'</span></span></span><br><span class="line"><span class="meta">hbase&gt;</span><span class="bash"> restore_snapshot <span class="string">'快照名'</span></span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>通常不建议用这个方式恢复表，因为要先将表Disable，通常采用Clone的方式</p>
+</blockquote>
+<ul>
+<li>克隆表</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">hbase&gt;</span><span class="bash"> clone_snapshot <span class="string">'&lt;快照名&gt;'</span>,<span class="string">'&lt;新表名&gt;'</span></span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>如果这个还在写入数据，则需要采用bulkload的方式导入</li>
+</ul>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hbase org<span class="selector-class">.apache</span><span class="selector-class">.hadoop</span><span class="selector-class">.hbase</span><span class="selector-class">.mapreduce</span><span class="selector-class">.LoadIncrementalHFiles</span> \</span><br><span class="line">-Dhbase<span class="selector-class">.mapreduce</span><span class="selector-class">.bulkload</span><span class="selector-class">.max</span><span class="selector-class">.hfiles</span><span class="selector-class">.perRegion</span>.perFamily=<span class="number">1024</span> \</span><br><span class="line">hdfs:<span class="comment">//dst-hbase-root-dir/hbase/archive/data/tablename/filename TABLE_NAME</span></span><br></pre></td></tr></table></figure>
+<h4 id="4-恢复HDFS文件"><a href="#4-恢复HDFS文件" class="headerlink" title="4.恢复HDFS文件"></a>4.恢复HDFS文件</h4><p>因为源CDH与目标CDH的集群的节点完全相同，所以安装Hadoop完成后，切换dfs目录到原来的dfs路径 (前提是重装CDH后原来的dfs目录没有被删除) 这时重新启动HDFS就会识别到原来的文件，也就给我们直接恢复HBase创造了可能</p>
+<p>我们查看<code>hbase</code>目录还完好的在这里</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200323130707.png" alt=""></p>
+<p>因为HBASE的所有源文件都是存在这里，所以理论上指定该目录为新的HBASE目录就可以恢复原来的数据</p>
+<p>安装HBase过程略·····</p>
+<blockquote>
+<p> 注意：这里需要注意，<strong>Master节点一定要与原来集群的位置相同！</strong></p>
+<p>如原来的Master在node3节点，那么我们新的HBASE-Master节点一定也要在node3上</p>
+</blockquote>
+<p>建议过程中指定hbase目录时先不要直接指定该目录，可以先指定一个新的目录作为HBASE根目录比如<code>new_hbase</code></p>
+<p>HBASE安装成功且可以正常启动后，关闭HBASE，再配置中重新指定根目录到<code>/hbase</code></p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200323131344.png" alt=""></p>
+<p>之后我们就可以重启HBASE了</p>
+<p>如果找不到表或者报错可以尝试关闭HBASE后清空ZK中hbase节点的数据</p>
+<figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># zookeeper-client </span><br><span class="line">[zk: localhost:<span class="number">2181</span>(CONNECTED) <span class="number">0</span>] rmr /hbase</span><br></pre></td></tr></table></figure>
+<p>再次重启HBASE应该就可以愉快的使用之前的表了</p>
+<blockquote>
+<p><strong>注意</strong>：</p>
+<ol>
+<li><p>如果你的表是有Phoenix创建的，那么一点要先将Phoenix与HBASE整合，包括Jar包以及各种配置，之后才可以正常加载HBASE表，否则会报协处理器错误！！</p>
+</li>
+<li><p>如果数据使用Phoenix写入的，那么请不要用Hbase Bulkload进行恢复，因为使用Hbase提供的bulkload方式批量导入数据时，不能同步更新索引表，会影响正常表的使用，如果是Phoenix导出的CSV文件 ，可以使用Phoenix Bulkload 进行导入</p>
+</li>
+</ol>
+</blockquote>
+<p>参考文章：</p>
+<p><a href="https://www.cnblogs.com/ballwql/p/hbase_data_transfer.html" target="_blank" rel="noopener">HBase 数据迁移方案介绍</a><br><a href="https://www.cnblogs.com/zhangwuji/p/9255700.html" target="_blank" rel="noopener">HBase Snapshot简介</a><br><a href="https://www.cnblogs.com/ios123/p/6689557.html" target="_blank" rel="noopener">HBase Snapshots原理与使用</a><br><a href="https://www.jianshu.com/p/8d091591d872" target="_blank" rel="noopener">玩转HBase快照</a></p>
+
+                
+                <hr>
+                <!-- Pager -->
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/03/25/优化-优化Git加载速度/" data-toggle="tooltip" data-placement="top" title="优化Git加载速度">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/03/22/Linux-关于群晖NFS/" data-toggle="tooltip" data-placement="top" title="Linux挂载群晖NFS">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                <!-- tip start -->
+                
+                <div class="comment_notes_blank"></div>
+                <div class="visitor_notice">
+                    <img 
+                        src="/img/notice.png" 
+                        alt="notice"
+                        title="notice"/>
+                    <p class="notice">
+                        除非注明，本博文章均为原创，转载请以链接形式标明本文地址.
+                    </p>
+                </div>
+                
+
+                
+                <div class="comment_notes">
+                    <p>
+                        
+                    </p>
+                </div>
+                
+                <!-- tip end -->
+
+                <!-- Music start-->
+                
+                <!-- Music end -->
+
+                <!-- Sharing -->
+                
+                <!-- Sharing -->
+
+                <!-- gitment start -->
+                
+                <!-- gitment end -->
+			
+			<!-- valine_comments start -->	
+						
+			<!-- valine_comments end -->
+			
+			<!-- 来必力City版安装代码 -->
+                
+                <hr>
+                <div id="lv-container" data-id="city" data-uid="MTAyMC80OTY0OC8yNjEzOQ==">
+                    <script type="text/javascript">
+                   (function(d, s) {
+                       var j, e = d.getElementsByTagName(s)[0];
+
+                       if (typeof LivereTower === 'function') { return; }
+
+                       j = d.createElement(s);
+                       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+                       j.async = true;
+
+                       e.parentNode.insertBefore(j, e);
+                   })(document, 'script');
+                    </script>
+                <noscript> 为正常使用来必力评论功能请激活JavaScript</noscript>
+                </div>
+                
+                <!-- City版安装代码已完成 -->
+
+            </div>
+            
+
+			
+            <!-- Tabe of Content -->
+            <!-- Table of Contents -->
+
+    
+      <aside id="sidebar">
+        <div id="toc" class="toc-article">
+        <strong class="toc-title">Contents</strong>
+        
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#记录一次HBase数据的迁移"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">记录一次HBase数据的迁移</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#1-迁移背景"><span class="toc-nav-number">1.1.</span> <span class="toc-nav-text">1.迁移背景</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#2-迁移方案"><span class="toc-nav-number">1.2.</span> <span class="toc-nav-text">2.迁移方案</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#3-迁移步骤"><span class="toc-nav-number">1.3.</span> <span class="toc-nav-text">3.迁移步骤</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#1-Export-Import方式"><span class="toc-nav-number">1.3.1.</span> <span class="toc-nav-text">1.Export&#x2F;Import方式</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#2-Snapshot-（-推荐-）"><span class="toc-nav-number">1.3.2.</span> <span class="toc-nav-text">2.Snapshot （ 推荐 ）</span></a></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#4-恢复HDFS文件"><span class="toc-nav-number">1.3.3.</span> <span class="toc-nav-text">4.恢复HDFS文件</span></a></li></ol></li></ol></li></ol>
+        
+        </div>
+      </aside>
+    
+
+                
+            <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#HBase" title="HBase">HBase</a>
+                        
+                          <a class="tag" href="/tags/#CDH" title="CDH">CDH</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'left',
+          icon: 'ℬ'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+
+
+<style  type="text/css">
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; GY 2021 
+                    <br>
+                    Powered by 
+                    <a href="https://github.com/dusign/hexo-theme-snail" target="_blank" rel="noopener">
+                        <i>hexo-theme-snail</i>
+                    </a> | 
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0"
+                        width="100px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=dusign&repo=hexo-theme-snail&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- Search -->
+
+<script src="/js/search.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 百度站长 -->
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://gaothink.top/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Search -->
+
+    <script type="text/javascript">      
+        var search_path = "search.xml";
+        if (search_path.length == 0) {
+            search_path = "search.xml";
+        }
+    var path = "/" + search_path;
+    searchFunc(path, 'local-search-input', 'local-search-result');
+    </script>
+
+
+<!-- busuanzi -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+	<a id="rocket" href="#top" class=""></a>
+	<script type="text/javascript" src="/js/totop.js?v=1.0.0" async=""></script>
+    <script type="text/javascript" src="/js/toc.js?v=1.0.0" async=""></script>
+	
+    
+        <!-- background effects line -->
+        
+
+        
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+        
+
+        <!-- background effects end -->
+    
+
+    <!--<script size="50" alpha='0.3' zIndex="-999" src="/js/ribbonStatic.js"></script>-->
+    
+        <script src="/js/ribbonDynamic.js"></script>
+    
+	
+	
+        <script type="text/javascript" src="/js/fancybox/jquery.fancybox.min.js"></script>
+        <script type="text/javascript" src="/js/wrapImage.js"></script>
+    
+	
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>

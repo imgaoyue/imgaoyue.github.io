@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="baidu-site-verification" content="uHZGT15IXQ" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="GaoThink·思考志">
+    <meta name="keyword"  content="大数据,Bigdata,Linux,CDH">
+    <link rel="shortcut icon" href="/img/ironman-draw.png">
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <!--<link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>-->
+   
+	<title>
+        
+          Apache Flink：概念、架构及原理 - GaoThink·思考志
+        
+    </title>
+
+    <link rel="canonical" href="http://gaothink.top/2020/04/11/Flink-Apache-Flink：概念、架构及原理/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS --> 
+    
+        
+<link rel="stylesheet" href="/css/dusign-light.css">
+
+        
+<link rel="stylesheet" href="/css/dusign-common-light.css">
+
+        
+<link rel="stylesheet" href="/css/font-awesome.css">
+
+        
+<link rel="stylesheet" href="/css/toc.css">
+
+        <!-- background effects end -->
+    
+    
+	<!-- fancybox support -->
+    
+      
+<link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css">
+
+    
+	
+    <!-- Pygments Highlight CSS -->
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+
+    
+<link rel="stylesheet" href="/css/widget.css">
+
+
+    
+<link rel="stylesheet" href="/css/rocket.css">
+
+
+    
+<link rel="stylesheet" href="/css/signature.css">
+
+
+    
+<link rel="stylesheet" href="/css/fonts.googleapis.css">
+
+
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <!-- photography -->
+    
+<link rel="stylesheet" href="/css/photography.css">
+
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+	
+	
+	<!-- Baidu Tongji -->
+    
+    <script>
+        // dynamic User by Hux
+        var _baId = '3c93829ba3b988ba61d1e9a4688967d3';
+    
+        // Originial
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "//hm.baidu.com/hm.js?" + _baId;
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+	
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- background effects start -->
+    
+    <!-- background effects end -->
+
+	<!-- Modified by Yu-Hsuan Yen -->
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        
+            
+                background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('')
+                /*post*/
+            
+        
+    }
+    
+</style>
+
+<header class="intro-header" >
+    <!-- Signature -->
+    <div id="signature">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                
+                    <div class="post-heading">
+                        <div class="tags">
+                            
+                              <a class="tag" href="/tags/#Flink" title="Flink">Flink</a>
+                            
+                        </div>
+                        <h1>Apache Flink：概念、架构及原理</h1>
+                        <h2 class="subheading"></h2>
+                        <span class="meta">
+                            Posted by GY on
+                            2020-04-11
+                        </span>
+
+                        
+                            <div class="blank_box"></div>
+                            <span class="meta">
+                                Words <span class="post-count">3.2k</span> and
+                                Reading Time <span class="post-count">11</span> Minutes
+                            </span>
+                            <div class="blank_box"></div>
+                            <!-- 不蒜子统计 start -->
+                            <span class="meta">
+                                Viewed <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span> Times
+                            </span>
+                            <!-- 不蒜子统计 end -->
+                        
+
+                    </div>
+                
+
+                </div>
+            </div>
+        </div>      
+    </div>
+
+    
+    <div class="waveWrapper">
+        <div class="wave wave_before" style="background-image: url('/img/wave-light.png')"></div>
+        <div class="wave wave_after" style="background-image: url('/img/wave-light.png')"></div>
+    </div>
+    
+</header>
+
+	
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">GaoThink</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archive/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/categories/">Categories</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <h1 id="Apache-Flink：概念、架构及原理"><a href="#Apache-Flink：概念、架构及原理" class="headerlink" title="Apache Flink：概念、架构及原理"></a>Apache Flink：概念、架构及原理</h1><h2 id="Stream-amp-Transformation-amp-Operator"><a href="#Stream-amp-Transformation-amp-Operator" class="headerlink" title="Stream &amp; Transformation &amp; Operator"></a>Stream &amp; Transformation &amp; Operator</h2><p>用户实现的Flink程序是由Stream和Transformation这两个基本构建块组成，其中Stream是一个中间结果数据，而Transformation是一个操作，它对一个或多个输入Stream进行计算处理，输出一个或多个结果Stream。</p>
+<p>当一个Flink程序被执行的时候，它会被映射为Streaming Dataflow。一个Streaming Dataflow是由一组Stream和Transformation Operator组成，它类似于一个DAG图，在启动的时候从一个或多个Source Operator开始，结束于一个或多个Sink Operator。</p>
+<p>下面是一个由Flink程序映射为Streaming Dataflow的示意图，如下所示：<br><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200414095323.png" alt="">1、Source: 数据源</p>
+<ul>
+<li>Flink 在流处理和批处理上的 source 大概有 4 类：基于本地集合的 source、基于文件的 source、基于网络套接字的 source、自定义的 source。</li>
+<li>自定义的 source 常见的有 Apache kafka、Amazon Kinesis Streams、RabbitMQ、Twitter Streaming API、Apache NiFi 等，当然你也可以定义自己的 source。</li>
+</ul>
+<p>2、Transformation：数据转换操作</p>
+<ul>
+<li>Map / FlatMap / Filter / KeyBy / Reduce / Fold / Aggregations / Window / WindowAll / Union / Window join / Split / Select / Project 等。</li>
+</ul>
+<p>3、Sink：接收器</p>
+<ul>
+<li><p>Flink 常见的 Sink 大概有如下几类：写入文件、打印出来、写入 socket 、自定义的 Sink。</p>
+</li>
+<li><p>自定义的 Sink常见的有 Apache kafka、RabbitMQ、MySQL、ElasticSearch、Apache Cassandra、Hadoop FileSystem 等，也可以定义自己的 Sink。</p>
+</li>
+</ul>
+<hr>
+<h2 id="Parallel-Dataflow"><a href="#Parallel-Dataflow" class="headerlink" title="Parallel Dataflow"></a>Parallel Dataflow</h2><p>在Flink中，程序天生是并行和分布式的：一个Stream可以被分成多个Stream分区（Stream Partitions），一个Operator可以被分成多个Operator Subtask，每一个Operator Subtask是在不同的线程中独立执行的。一个Operator的并行度，等于Operator Subtask的个数，一个Stream的并行度总是等于生成它的Operator的并行度。<br>有关Parallel Dataflow的实例，如下图所示：<br><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200414103426.png" alt=""><br>上图Streaming Dataflow的并行视图中，展现了在两个Operator之间的Stream的两种模式：</p>
+<p><strong>① One-to-one模式</strong></p>
+<p>比如从Source[1]到map()[1]，它保持了Source的分区特性（Partitioning）和分区内元素处理的有序性，也就是说map()[1]的Subtask看到数据流中记录的顺序，与Source[1]中看到的记录顺序是一致的。</p>
+<p><strong>② Redistribution模式</strong></p>
+<p>这种模式会改变数据的分区数，每个一个operator subtask会根据选择transformation把数据发送到不同的目标subtasks，比如keyBy()会通过hashcode重新分区,broadcast()和rebalance()方法会随机重新分区，比如：在上图中map()和keyBy/window，keyBy/window和Sink之间的数据传递方式。</p>
+<p>另外，Source Operator对应2个Subtask，所以并行度为2，而Sink Operator的Subtask只有1个，故而并行度为1。</p>
+<hr>
+<h2 id="Task-amp-Operator-Chain"><a href="#Task-amp-Operator-Chain" class="headerlink" title="Task &amp; Operator Chain"></a>Task &amp; Operator Chain</h2><p>在Flink分布式执行环境中，会将多个Operator Subtask串起来组成一个Operator Chain，实际上就是一个执行链，每个执行链会在TaskManager上一个独立的线程中执行，如下图所示：<br><img src="http://shiyanjun.cn/wp-content/uploads/2016/04/flink-tasks-chains.png" alt="flink-tasks-chains"><br>上图中上半部分表示的是一个Operator Chain，多个Operator通过Stream连接，而每个Operator在运行时对应一个Task；图中下半部分是上半部分的一个并行版本，也就是<strong>对每一个Task都并行化为多个Subtask</strong>。</p>
+<blockquote>
+<p><strong>Task:</strong><br>Task是在operators的subtask进行链化之后形成的，具体Flink job中有多少task和operator的并行度和链化的策略有关。</p>
+<p><strong>SubTask：</strong><br> 因为Flink是分布式部署的，程序中的每个算子，在实际执行中被分隔为一个或者多个subtask，运算符子任务(subtask)的数量是该特定运算符的并行度。数据流在算子之间流动，就对应到SubTask之间的数据传输。Flink允许同一个job中来自不同task的subtask可以共享同一个slot。每个slot可以执行一个并行的pipeline。可以将pipeline看作是多个subtask的组成的。</p>
+</blockquote>
+<hr>
+<h2 id="Task-Slots-and-Resources"><a href="#Task-Slots-and-Resources" class="headerlink" title="Task Slots and Resources"></a>Task Slots and Resources</h2><p>① 每一个worker(TaskManager) 都是一个JVM进程，他可能会在独立的线程中执行一个或者多个subtask。为了控制worker能够接收多个Task 。worker通过Task Slot来进行控制(一个worker至少有一个Task Slot)。</p>
+<p>② 每个Task Slot表示TaskManager拥有资源的一个固定大小的子集。<strong>假如一个TaskManager有三个Slot,那么它会将其管理的内存分成三份给各个Slot</strong>。Slot的资源化意味着一个Job的subtask将不需要跟来自其它job的subtask竞争被管理的内存。</p>
+<p>③ 通过调整Task Slots的数量，用户可以定义subtasks它们之间如何互相隔离。如果一个TaskManager一个Slot,那将意味着每个Task group独立的运行在JVM中。而一个TaskManager多个Slot意味着更多的subtask可以共享一个JVM。而在同一个JVM进程中的Task将共享TCP连接和心跳消息。它们也可能共享数据集和数据结构，这样可以减少每个Task 的负载。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200414104627.jpg" alt=""></p>
+<p>默认，如果subtask是来自相同的Job,但不是相同的Task,Flink允许subtask共享Slot。这样就会出现一个Slot可能容纳一个Job中的整个pipeline。允许Slot共享有以下两个好处：</p>
+<p>① Flink集群需要的Task Slots的数量和作业中的最高并行度的一致。不需要计算一个程序总共包含多少个task。</p>
+<p>② 更好的利用资源。如果没有Slot共享，非密集型source/map()子任务将阻塞与资源密集型窗口子任务一样多的资源；Slot共享可以充分利用Slot资源，同时确保繁重的subtasks在Taskmanager中公平分配。</p>
+<hr>
+<h2 id="Flink工作原理"><a href="#Flink工作原理" class="headerlink" title="Flink工作原理"></a>Flink工作原理</h2><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200413171505.png" alt=""></p>
+<p><strong>JobClient:</strong><br>负责接收程序，解析和优化程序的执行计划，然后提交执行计划到JobManager。</p>
+<p>这里执行的程序优化是将相邻的Operator融合，形成OperatorChain，Operator的融合可以减少task的数量，提高TaskManager的资源利用率。</p>
+<p><strong>JobManagers:</strong><br> 负责申请资源，协调以及控制整个job的执行过程，具体包括，调度任务、处理checkpoint、容错等等</p>
+<p><strong>TaskManager:</strong><br> TaskManager运行在不同节点上的JVM进程(process)，负责接收并执行JobManager发送的task,并且与JobManager通信，反馈任务状态信息，如果说JobManager是master的话，那么TaskManager就是worker用于执行任务。每个TaskManager像是一个容器，包含一个或者多个Slot。</p>
+<p><strong>Slot:</strong><br> Slot是TaskManager资源粒度的划分，每个Slot都有自己独立的内存。<strong>所有Slot平均分配TaskManager的内存，值得注意的是，Slot仅划分内存，不涉及cpu的划分</strong>。每个Slot可以运行多个task。Slot的个数就代表了一个程序的最高并行度。</p>
+<blockquote>
+<p><strong>Task Slot 是静态的概念，是指 TaskManager 具有的并发执行能力</strong>，可以通过<br> 参数<code>taskmanager.numberOfTaskSlots</code> 进行配置</p>
+<p><strong>并行度 parallelism 是动态概念， 即 TaskManager 运行程序时实际使用的并发能力</strong>，可以通过参数 <code>parallelism.default</code>进行配置。</p>
+<p>也就是说，假设一共有 3 个 TaskManager，每一个 TaskManager 中的分配 3 个 TaskSlot，也就是每个 TaskManager 可以接收 3 个 task，一共 9 个 TaskSlot，如果我们设置 <code>parallelism.default=1</code>，即运行程序默认的并行度为 1，9 个 TaskSlot 只用了 1 个，有 8 个空闲，因此，设置合适的并行度才能提高效率。</p>
+</blockquote>
+<hr>
+<h2 id="Time-amp-Window"><a href="#Time-amp-Window" class="headerlink" title="Time &amp; Window"></a>Time &amp; Window</h2><p>Flink支持基于时间窗口操作，也支持基于数据的窗口操作，如下图所示：<br><img src="http://shiyanjun.cn/wp-content/uploads/2016/04/flink-window.png" alt="flink-window"><br>上图中，基于时间的窗口操作，在每个相同的时间间隔对Stream中的记录进行处理，通常各个时间间隔内的窗口操作处理的记录数不固定；而基于数据驱动的窗口操作，可以在Stream中选择固定数量的记录作为一个窗口，对该窗口中的记录进行处理。<br>有关窗口操作的不同类型，可以分为如下几种：滚动窗口（Tumbling Windows，记录没有重叠）、滑动窗口（Slide Windows，记录有重叠）、会话窗口（Session Windows）。<br>在处理Stream中的记录时，记录中通常会包含各种典型的时间字段，Flink支持多种时间的处理，如下图所示：<br><img src="http://shiyanjun.cn/wp-content/uploads/2016/04/flink-event-ingestion-processing-time.png" alt="flink-event-ingestion-processing-time"></p>
+<ul>
+<li><p>Event Time表示事件创建时间</p>
+</li>
+<li><p>Ingestion Time表示事件进入到Flink Dataflow的时间 </p>
+</li>
+<li><p>Processing Time表示某个Operator对事件进行处理事的本地系统时间（是在TaskManager节点上）</p>
+</li>
+</ul>
+<hr>
+<h2 id="容错机制"><a href="#容错机制" class="headerlink" title="容错机制"></a>容错机制</h2><p>Flink基于Checkpoint机制实现容错，它的原理是不断地生成分布式Streaming数据流Snapshot。在流处理失败时，通过这些Snapshot可以恢复数据流处理。理解Flink的容错机制，首先需要了解一下Barrier这个概念：<br>Stream Barrier是Flink分布式Snapshotting中的核心元素，它会作为数据流的记录被同等看待，被插入到数据流中，将数据流中记录的进行分组，并沿着数据流的方向向前推进。每个Barrier会携带一个Snapshot ID，属于该Snapshot的记录会被推向该Barrier的前方。因为Barrier非常轻量，所以并不会中断数据流。带有Barrier的数据流，如下图所示：<br><img src="http://shiyanjun.cn/wp-content/uploads/2016/04/flink-stream-barriers.png" alt="flink-stream-barriers"><br>基于上图，我们通过如下要点来说明：</p>
+<ul>
+<li>出现一个Barrier，在该Barrier之前出现的记录都属于该Barrier对应的Snapshot，在该Barrier之后出现的记录属于下一个Snapshot</li>
+<li>来自不同Snapshot多个Barrier可能同时出现在数据流中，也就是说同一个时刻可能并发生成多个Snapshot</li>
+<li>当一个中间（Intermediate）Operator接收到一个Barrier后，它会发送Barrier到属于该Barrier的Snapshot的数据流中，等到Sink Operator接收到该Barrier后会向Checkpoint Coordinator确认该Snapshot，直到所有的Sink Operator都确认了该Snapshot，才被认为完成了该Snapshot</li>
+</ul>
+<p>这里还需要强调的是，<strong>Snapshot并不仅仅是对数据流做了一个状态的Checkpoint，它也包含了一个Operator内部所持有的状态，这样才能够在保证在流处理系统失败时能够正确地恢复数据流处理。</strong>也就是说，如果一个Operator包含任何形式的状态，这种状态必须是Snapshot的一部分。</p>
+<p>Operator的状态包含两种：</p>
+<p>一种是<strong>系统状态</strong>，一个Operator进行计算处理的时候需要对数据进行缓冲，所以数据缓冲区的状态是与Operator相关联的，以窗口操作的缓冲区为例，Flink系统会收集或聚合记录数据并放到缓冲区中，直到该缓冲区中的数据被处理完成</p>
+<p>另一种是<strong>用户自定义状态</strong>（状态可以通过转换函数进行创建和修改），它可以是函数中的Java对象这样的简单变量，也可以是与函数相关的Key/Value状态。</p>
+<p>对于具有轻微状态的Streaming应用，会生成非常轻量的Snapshot而且非常频繁，但并不会影响数据流处理性能。Streaming应用的状态会被存储到一个可配置的存储系统中，例如HDFS。在一个Checkpoint执行过程中，存储的状态信息及其交互过程，如下图所示：<br><img src="http://shiyanjun.cn/wp-content/uploads/2016/04/flink-checkpointing.png" alt="flink-checkpointing"><br>在Checkpoint过程中，还有一个比较重要的操作——Stream Aligning。当Operator接收到多个输入的数据流时，需要在Snapshot Barrier中对数据流进行排列对齐，如下图所示：<br><img src="http://shiyanjun.cn/wp-content/uploads/2016/04/flink-stream-aligning.png" alt="flink-stream-aligning"><br>具体排列过程如下：</p>
+<ol>
+<li>Operator从一个incoming Stream接收到Snapshot Barrier n，然后暂停处理，直到其它的incoming Stream的Barrier n（否则属于2个Snapshot的记录就混在一起了）到达该Operator</li>
+<li>接收到Barrier n的Stream被临时搁置，来自这些Stream的记录不会被处理，而是被放在一个Buffer中</li>
+<li>一旦最后一个Stream接收到Barrier n，Operator会emit所有暂存在Buffer中的记录，然后向Checkpoint Coordinator发送Snapshot n</li>
+<li>继续处理来自多个Stream的记录</li>
+</ol>
+<p>基于Stream Aligning操作能够实现Exactly Once语义，但是也会给流处理应用带来延迟，因为为了排列对齐Barrier，会暂时缓存一部分Stream的记录到Buffer中，尤其是在数据流并行度很高的场景下可能更加明显，通常以最迟对齐Barrier的一个Stream为处理Buffer中缓存记录的时刻点。在Flink中，提供了一个开关，选择是否使用Stream Aligning，如果关掉则Exactly Once会变成At least once。</p>
+<hr>
+<h2 id="任务提交流程"><a href="#任务提交流程" class="headerlink" title="任务提交流程"></a>任务提交流程</h2><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200413172810.png" alt=""></p>
+<ol>
+<li><p>Flink 任务提交后，Client 向 HDFS 上传 Flink 的 Jar 包和配置</p>
+</li>
+<li><p>之后向 Yarn ResourceManager 提交任务，ResourceManager 分配 Container 资源并通知对应的 NodeManager 启动 ApplicationMaster</p>
+</li>
+<li>ApplicationMaster 启动后加载 Flink 的 Jar 包 和配置构建环境，然后启动 JobManager</li>
+<li>之后 ApplicationMaster 向 ResourceManager 申请资源启动 TaskManager </li>
+<li>ResourceManager 分 配 Container 资 源 后 ， 由 ApplicationMaster 通 知 资源所在节点的 NodeManager 启 动 TaskManager ， NodeManager 加载 Flink 的 Jar 包和配置构建环境并启动 TaskManager</li>
+<li>TaskManager 启动后向 JobManager 发送心跳包，并等待 JobManager 向其分配任务</li>
+</ol>
+<blockquote>
+<p>上述流程为简化版流程，详细启动过程见 <a href="https://gaothink.top/2020/04/13/Flink-Flink-on-YARN%EF%BC%9A%E4%B8%80%E5%BC%A0%E5%9B%BE%E8%BD%BB%E6%9D%BE%E6%8E%8C%E6%8F%A1%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">《Flink on YARN：一张图轻松掌握基础架构与启动流程》</a></p>
+</blockquote>
+<hr>
+
+                
+                <hr>
+                <!-- Pager -->
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/04/12/Flink-Apache-Flink：网络流控及反压/" data-toggle="tooltip" data-placement="top" title="Apache Flink：网络流控及反压">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/04/03/HBase-HBase优化笔记/" data-toggle="tooltip" data-placement="top" title="HBase服务端优化不完全笔记">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                <!-- tip start -->
+                
+                <div class="comment_notes_blank"></div>
+                <div class="visitor_notice">
+                    <img 
+                        src="/img/notice.png" 
+                        alt="notice"
+                        title="notice"/>
+                    <p class="notice">
+                        除非注明，本博文章均为原创，转载请以链接形式标明本文地址.
+                    </p>
+                </div>
+                
+
+                
+                <div class="comment_notes">
+                    <p>
+                        
+                    </p>
+                </div>
+                
+                <!-- tip end -->
+
+                <!-- Music start-->
+                
+                <!-- Music end -->
+
+                <!-- Sharing -->
+                
+                <!-- Sharing -->
+
+                <!-- gitment start -->
+                
+                <!-- gitment end -->
+			
+			<!-- valine_comments start -->	
+						
+			<!-- valine_comments end -->
+			
+			<!-- 来必力City版安装代码 -->
+                
+                <hr>
+                <div id="lv-container" data-id="city" data-uid="MTAyMC80OTY0OC8yNjEzOQ==">
+                    <script type="text/javascript">
+                   (function(d, s) {
+                       var j, e = d.getElementsByTagName(s)[0];
+
+                       if (typeof LivereTower === 'function') { return; }
+
+                       j = d.createElement(s);
+                       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+                       j.async = true;
+
+                       e.parentNode.insertBefore(j, e);
+                   })(document, 'script');
+                    </script>
+                <noscript> 为正常使用来必力评论功能请激活JavaScript</noscript>
+                </div>
+                
+                <!-- City版安装代码已完成 -->
+
+            </div>
+            
+
+			
+            <!-- Tabe of Content -->
+            <!-- Table of Contents -->
+
+    
+      <aside id="sidebar">
+        <div id="toc" class="toc-article">
+        <strong class="toc-title">Contents</strong>
+        
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#Apache-Flink：概念、架构及原理"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">Apache Flink：概念、架构及原理</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Stream-amp-Transformation-amp-Operator"><span class="toc-nav-number">1.1.</span> <span class="toc-nav-text">Stream &amp; Transformation &amp; Operator</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Parallel-Dataflow"><span class="toc-nav-number">1.2.</span> <span class="toc-nav-text">Parallel Dataflow</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Task-amp-Operator-Chain"><span class="toc-nav-number">1.3.</span> <span class="toc-nav-text">Task &amp; Operator Chain</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Task-Slots-and-Resources"><span class="toc-nav-number">1.4.</span> <span class="toc-nav-text">Task Slots and Resources</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Flink工作原理"><span class="toc-nav-number">1.5.</span> <span class="toc-nav-text">Flink工作原理</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Time-amp-Window"><span class="toc-nav-number">1.6.</span> <span class="toc-nav-text">Time &amp; Window</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#容错机制"><span class="toc-nav-number">1.7.</span> <span class="toc-nav-text">容错机制</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#任务提交流程"><span class="toc-nav-number">1.8.</span> <span class="toc-nav-text">任务提交流程</span></a></li></ol></li></ol>
+        
+        </div>
+      </aside>
+    
+
+                
+            <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#Flink" title="Flink">Flink</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'left',
+          icon: 'ℬ'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+
+
+<style  type="text/css">
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; GY 2021 
+                    <br>
+                    Powered by 
+                    <a href="https://github.com/dusign/hexo-theme-snail" target="_blank" rel="noopener">
+                        <i>hexo-theme-snail</i>
+                    </a> | 
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0"
+                        width="100px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=dusign&repo=hexo-theme-snail&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- Search -->
+
+<script src="/js/search.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 百度站长 -->
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://gaothink.top/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Search -->
+
+    <script type="text/javascript">      
+        var search_path = "search.xml";
+        if (search_path.length == 0) {
+            search_path = "search.xml";
+        }
+    var path = "/" + search_path;
+    searchFunc(path, 'local-search-input', 'local-search-result');
+    </script>
+
+
+<!-- busuanzi -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+	<a id="rocket" href="#top" class=""></a>
+	<script type="text/javascript" src="/js/totop.js?v=1.0.0" async=""></script>
+    <script type="text/javascript" src="/js/toc.js?v=1.0.0" async=""></script>
+	
+    
+        <!-- background effects line -->
+        
+
+        
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+        
+
+        <!-- background effects end -->
+    
+
+    <!--<script size="50" alpha='0.3' zIndex="-999" src="/js/ribbonStatic.js"></script>-->
+    
+        <script src="/js/ribbonDynamic.js"></script>
+    
+	
+	
+        <script type="text/javascript" src="/js/fancybox/jquery.fancybox.min.js"></script>
+        <script type="text/javascript" src="/js/wrapImage.js"></script>
+    
+	
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>

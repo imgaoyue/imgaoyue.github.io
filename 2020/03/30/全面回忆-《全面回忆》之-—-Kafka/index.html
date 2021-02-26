@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="baidu-site-verification" content="uHZGT15IXQ" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="GaoThink·思考志">
+    <meta name="keyword"  content="大数据,Bigdata,Linux,CDH">
+    <link rel="shortcut icon" href="/img/ironman-draw.png">
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <!--<link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>-->
+   
+	<title>
+        
+          《全面回忆》之 — Kafka - GaoThink·思考志
+        
+    </title>
+
+    <link rel="canonical" href="http://gaothink.top/2020/03/30/全面回忆-《全面回忆》之-—-Kafka/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS --> 
+    
+        
+<link rel="stylesheet" href="/css/dusign-light.css">
+
+        
+<link rel="stylesheet" href="/css/dusign-common-light.css">
+
+        
+<link rel="stylesheet" href="/css/font-awesome.css">
+
+        
+<link rel="stylesheet" href="/css/toc.css">
+
+        <!-- background effects end -->
+    
+    
+	<!-- fancybox support -->
+    
+      
+<link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css">
+
+    
+	
+    <!-- Pygments Highlight CSS -->
+    
+<link rel="stylesheet" href="/css/highlight.css">
+
+
+    
+<link rel="stylesheet" href="/css/widget.css">
+
+
+    
+<link rel="stylesheet" href="/css/rocket.css">
+
+
+    
+<link rel="stylesheet" href="/css/signature.css">
+
+
+    
+<link rel="stylesheet" href="/css/fonts.googleapis.css">
+
+
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <!-- photography -->
+    
+<link rel="stylesheet" href="/css/photography.css">
+
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+	
+	
+	<!-- Baidu Tongji -->
+    
+    <script>
+        // dynamic User by Hux
+        var _baId = '3c93829ba3b988ba61d1e9a4688967d3';
+    
+        // Originial
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "//hm.baidu.com/hm.js?" + _baId;
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+	
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- background effects start -->
+    
+    <!-- background effects end -->
+
+	<!-- Modified by Yu-Hsuan Yen -->
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        
+            
+                background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('')
+                /*post*/
+            
+        
+    }
+    
+</style>
+
+<header class="intro-header" >
+    <!-- Signature -->
+    <div id="signature">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                
+                    <div class="post-heading">
+                        <div class="tags">
+                            
+                              <a class="tag" href="/tags/#全面回忆" title="全面回忆">全面回忆</a>
+                            
+                              <a class="tag" href="/tags/#Kafka" title="Kafka">Kafka</a>
+                            
+                        </div>
+                        <h1>《全面回忆》之 — Kafka</h1>
+                        <h2 class="subheading"></h2>
+                        <span class="meta">
+                            Posted by GY on
+                            2020-03-30
+                        </span>
+
+                        
+                            <div class="blank_box"></div>
+                            <span class="meta">
+                                Words <span class="post-count">3.7k</span> and
+                                Reading Time <span class="post-count">13</span> Minutes
+                            </span>
+                            <div class="blank_box"></div>
+                            <!-- 不蒜子统计 start -->
+                            <span class="meta">
+                                Viewed <span id="busuanzi_value_page_pv"><i class="fa fa-spinner fa-spin"></i></span> Times
+                            </span>
+                            <!-- 不蒜子统计 end -->
+                        
+
+                    </div>
+                
+
+                </div>
+            </div>
+        </div>      
+    </div>
+
+    
+    <div class="waveWrapper">
+        <div class="wave wave_before" style="background-image: url('/img/wave-light.png')"></div>
+        <div class="wave wave_after" style="background-image: url('/img/wave-light.png')"></div>
+    </div>
+    
+</header>
+
+	
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">GaoThink</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+
+                    
+
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/archive/">Archives</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/categories/">Categories</a>
+                        </li>
+                        
+                    
+
+                        
+                        <li>
+                            <a href="/tags/">Tags</a>
+                        </li>
+                        
+                    
+                    
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Main Content -->
+    <!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+            <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330145049.png" alt=""></p>
+<blockquote>
+<p><strong>非系统性Kafka教程</strong>:smile:</p>
+</blockquote>
+<p>Kafka是一个分布式消息队列。具有高性能、持久化、多副本备份、横向扩展能力。生产者往队列里写消息，消费者从队列里取消息进行业务逻辑。一般在架构设计中起到解耦、削峰、异步处理的作用。</p>
+<hr>
+<h2 id="1-主要特性"><a href="#1-主要特性" class="headerlink" title="1.主要特性"></a>1.主要特性</h2><ul>
+<li><p>高吞吐量、低延迟：Kafka每秒可以处理几十万条消息，它的延迟最低只有几毫秒</p>
+</li>
+<li><p>可扩展性：Kafka集群支持热扩展</p>
+</li>
+<li><p>持久性、可靠性：消息被持久化到本地磁盘，并且支持数据备份防止数据丢失</p>
+</li>
+<li><p>容错性：允许集群中节点失败（若副本数量为n,则允许n-1个节点失败）</p>
+</li>
+<li><p>高并发：支持数千个客户端同时读写</p>
+</li>
+</ul>
+<hr>
+<h2 id="2-基本概念"><a href="#2-基本概念" class="headerlink" title="2.基本概念"></a>2.基本概念</h2><ol>
+<li><strong>Producer</strong> ：消息生产者，就是向 Kafka broker 发消息的客户端</li>
+<li><strong>Consumer</strong> ：消息消费者，向 Kafka broker 取消息的客户端</li>
+<li><strong>Topic</strong> ：可以理解为一个队列，一个 Topic 又分为一个或多个分区</li>
+<li><strong>Consumer Group</strong>：这是 Kafka 用来实现一个 Topic消息的广播（发给所有的 consumer）和单播（发给任意一个 consumer）的手段。一个 Topic可以有多个 Consumer Group</li>
+<li><strong>Broker</strong> ：一台 Kafka 服务器就是一个 broker。一个集群由多个 broker 组成</li>
+<li><strong>Partition</strong>：Topic物理上的分组，一个Topic可以分为多个partition，每个partition是一个有序的队列。partition中的每条消息都会被分配一个有序的id（offset）</li>
+<li><strong>Offset</strong>：每条消息在文件中的位置（偏移量）</li>
+</ol>
+<hr>
+<h2 id="3-总体数据流"><a href="#3-总体数据流" class="headerlink" title="3.总体数据流"></a>3.总体数据流</h2><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330145305.png" alt=""></p>
+<ol>
+<li>Producer根据指定的partition方法（round-robin、hash等），将消息发布到指定Topic的Partition里面</li>
+<li>Kafka集群接收到Producer发过来的消息后，将其持久化到硬盘，并保留消息指定时长（可配置），而不关注消息是否被消费。</li>
+<li>Consumer从Kafka集群Pull数据，并控制获取消息的offset</li>
+</ol>
+<hr>
+<h2 id="4-生产基本流程"><a href="#4-生产基本流程" class="headerlink" title="4.生产基本流程"></a>4.生产基本流程</h2><p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330151005.png" alt=""></p>
+<p>创建一条记录，记录中一个要指定对应的topic和value，key和partition可选。 先序列化，然后按照topic和partition，放进对应的发送队列中。kafka produce都是批量请求，会积攒一批，然后一起发送，不是调send()就进行立刻进行网络发包。<br> 如果partition没填，那么情况会是这样的：</p>
+<ol>
+<li>key有填<br> 按照key进行哈希，相同key去一个partition。（如果扩展了partition的数量那么就不能保证了）</li>
+<li>key没填<br> round-robin来选partition</li>
+</ol>
+<p>这些要发往同一个partition的请求按照配置，攒一波，然后由一个单独的线程一次性发过去。</p>
+<hr>
+<h2 id="5-Kafka-为何如此之快"><a href="#5-Kafka-为何如此之快" class="headerlink" title="5.Kafka 为何如此之快"></a>5.Kafka 为何如此之快</h2><p>总结一下其实就是四个要点</p>
+<ul>
+<li><p>顺序读写</p>
+</li>
+<li><p>零拷贝</p>
+</li>
+<li><p>消息压缩</p>
+</li>
+<li><p>文件分段</p>
+</li>
+<li>批量发送</li>
+</ul>
+<h3 id="写入：页缓存技术-磁盘顺序写"><a href="#写入：页缓存技术-磁盘顺序写" class="headerlink" title="写入：页缓存技术 + 磁盘顺序写"></a>写入：页缓存技术 + 磁盘顺序写</h3><hr>
+<p>首先 Kafka 每次接收到数据都会往磁盘上去写</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330155655.png" alt=""></p>
+<p>但是如果把数据基于磁盘来存储，频繁的往磁盘文件里写数据，这个性能会不会很差？</p>
+<p>没错，要是真的跟上面那个图那么简单的话，那确实这个性能是比较差的</p>
+<p>操作系统本身有一层缓存，叫做 <strong>Page Cache</strong> (页缓存)，是在内存里的缓存，我们也可以称之为 OS Cache，意思就是操作系统自己管理的缓存。</p>
+<p>你在写入磁盘文件的时候，可以直接写入这个 OS Cache 里，也就是仅仅写入内存中，接下来由操作系统自己决定什么时候把 OS Cache 里的数据真的刷入磁盘文件中。</p>
+<p>仅仅这一个步骤，就可以将磁盘文件写性能提升很多了，因为其实这里相当于是在写内存，不是在写磁盘，如下图：</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330160323.png" alt=""></p>
+<p>接着另外一个就是 Kafka 写数据的时候，非常关键的一点，它是以<strong>磁盘顺序写</strong>的方式来写的。</p>
+<p>也就是说，仅仅将数据追加到文件的末尾，不是在文件的随机位置来修改数据。</p>
+<p><strong>基于上面两点，Kafka 就实现了写入数据的超高性能</strong></p>
+<h3 id="读取：零拷贝技术"><a href="#读取：零拷贝技术" class="headerlink" title="读取：零拷贝技术"></a>读取：零拷贝技术</h3><p>假设要是 Kafka 什么优化都不做，就是很简单的从磁盘读数据发送给下游的消费者，那么大概过程如下所示：</p>
+<ul>
+<li>先看看要读的数据在不在 OS Cache 里，如果不在的话就从磁盘文件里读取数据后放入 OS Cache</li>
+<li>接着从操作系统的 OS Cache 里拷贝数据到应用程序进程的缓存里，再从应用程序进程的缓存里拷贝数据到操作系统层面的 Socket 缓存里</li>
+<li><p>最后从 Socket 缓存里提取数据后发送到网卡，最后发送出去给下游消费</p>
+</li>
+<li><p>传统的数据发送一共需要发送4次上下文切换</p>
+</li>
+</ul>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330163044.png" alt=""></p>
+<p>很明显可以看到从操作系统的 Cache 里拷贝到应用进程的缓存里，接着又从应用程序缓存里拷贝回操作系统的 Socket 缓存里这两次拷贝都是没必要的。</p>
+<p>而且为了进行这两次拷贝，中间还发生了好几次上下文切换，一会儿是应用程序在执行，一会儿上下文切换到操作系统来执行。</p>
+<p>所以这种方式来读取数据是比较消耗性能的。Kafka 为了解决这个问题，<strong>在读数据的时候是引入零拷贝技术</strong>。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330163346.png" alt=""></p>
+<p>直接让操作系统的 Cache 中的数据发送到网卡后传输给下游的消费者，中间跳过了两次拷贝数据的步骤，Socket 缓存中仅仅会拷贝一个描述符过去，不会拷贝数据到 Socket 缓存。</p>
+<p>而且大家会注意到，在从磁盘读数据的时候，会先看看 OS Cache 内存中是否有，如果有的话，其实读数据都是直接读内存的。</p>
+<p>由此我们可以得出重要的结论：<strong>如果Kafka producer的生产速率与consumer的消费速率相差不大，那么就能几乎只靠对Page Cache的读写完成整个生产-消费过程</strong>，磁盘访问非常少。这个结论俗称为“读写空中接力”。并且Kafka持久化消息到各个topic的partition文件时，是只追加的顺序写，充分利用了磁盘顺序访问快的特性，效率高。</p>
+<h3 id="注意事项与相关参数"><a href="#注意事项与相关参数" class="headerlink" title="注意事项与相关参数"></a>注意事项与相关参数</h3><p>对于单纯运行Kafka的集群而言，首先要注意的就是<strong>为Kafka设置合适（不那么大）的JVM堆大小</strong>。从上面的分析可知，Kafka的性能与堆内存关系并不大，而对page cache需求巨大。根据经验值，为Kafka分配5~8GB的堆内存就已经足足够用了，将剩下的系统内存都作为page cache空间，可以最大化I/O效率。</p>
+<p>另一个需要特别注意的问题是<strong>lagging consumer</strong>，即那些消费速率慢、明显落后的consumer。它们要读取的数据有较大概率不在broker page cache中，因此会增加很多不必要的读盘操作。比这更坏的是，lagging consumer读取的“冷”数据仍然会进入page cache，污染了多数正常consumer要读取的“热”数据，连带着正常consumer的性能变差。在生产环境中，这个问题尤为重要。</p>
+<blockquote>
+<p>该章节内容参考：<br><a href="https://www.sohu.com/a/299293647_463994" target="_blank" rel="noopener">《Kafka如何实现每秒上百万的超高并发写入？》</a><br><a href="https://www.jianshu.com/p/92f33aa0ff52" target="_blank" rel="noopener">《聊聊page cache与Kafka之间的事儿》</a></p>
+</blockquote>
+<hr>
+<h2 id="6-多副本与数据一致性"><a href="#6-多副本与数据一致性" class="headerlink" title="6.多副本与数据一致性"></a>6.多副本与数据一致性</h2><h3 id="补充概念"><a href="#补充概念" class="headerlink" title="补充概念"></a>补充概念</h3><ul>
+<li><strong>Replica</strong>：消息的备份，这个备份是针对partition的<ul>
+<li>当某个topic的replication-factor为N且N大于1时，每个Partition都会有N个副本(Replica)。kafka的replica包含leader与follower。</li>
+<li>Replica的个数小于等于Broker的个数，也就是说，对于每个Partition而言，每个Broker上最多只会有一个Replica，因此可以使用Broker id 指定Partition的Replica。</li>
+<li>所有Partition的Replica默认情况会均匀分布到所有Broker上。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li><p><strong>Controller</strong>：Kafka集群中多个broker，有一个会被选举为<strong>Controller Leader</strong>，负责管理整个集群中分区和副本的状态</p>
+<ul>
+<li>所有Partition的Leader选举都由Controller决定</li>
+<li>Controller也负责增删Topic以及Replica的重新分配</li>
+<li>如果Partition Leader因宕机等原因改变，Controller直接通过RPC的方式（比Zookeeper Queue的方式更高效）通知需为此作出响应的Broker</li>
+<li>当broker启动的时候，都会创建Kafka Controller对象，但是只有第一个成功创建的节点的Kafka Controller才可以成为leader，其余的都是follower。当leader故障后，所有的follower会收到通知，再次竞争在该路径下创建节点从而选举新的leader</li>
+</ul>
+</li>
+<li><p><strong>Replica Manager</strong>：负责管理当前broker所有分区和副本的信息，会处理Kafka Controller发起的一些请求，副本状态的切换，添加/读取消息等</p>
+</li>
+</ul>
+<ul>
+<li><strong>ISR（in-sync replica）</strong>：Kafka 为某个分区维护的一组同步集合，即<strong>每个分区都有自己的一个 ISR 集合</strong>，处于 ISR 集合中的副本，意味着 follower 副本与 leader 副本保持同步状态，只有处于 ISR 集合中的副本才有资格被选举为 leader。</li>
+</ul>
+<p>了解了以上补充的概念，我们继续聊聊<strong>Kafka的Leader</strong></p>
+<h3 id="Leader的选举与容灾"><a href="#Leader的选举与容灾" class="headerlink" title="Leader的选举与容灾"></a>Leader的选举与容灾</h3><p>首先Kafka会将接收到的消息进行分区（partition），每个主题（topic）的消息有不同的分区。这样一方面消息的存储就不会受到单一服务器存储空间大小的限制，另一方面消息的处理也可以在多个服务器上并行。<br>  其次为了保证高可用，每个分区都会有一定数量的副本（replica）。这样如果有部分服务器不可用，副本所在的服务器就会接替上来，保证应用的持续性。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330174252.png" alt=""></p>
+<p>当存在多副本的情况下，会尽量把多个副本，分配到不同的broker上。</p>
+<p><strong>为了保证较高的处理效率，消息的读写都是在固定的一个副本上完成，这个副本就是所谓的Leader，之后所有该Partition的请求，实际操作的都是leader，而其他副本则是Follower。Follower会定期地到Leader上同步数据。</strong></p>
+<p>Kafka会在ZooKeeper上针对每个Topic维护一个称为ISR（<strong>in-sync replica，已同步的副本</strong>）的集合，该集合中是一些分区的副本。如果这个集合有增减，Kafka 会更新ZooKeeper上的记录。</p>
+<p>当一个broker宕机后，所有leader在该broker上的Partition都会重新选举，选出一个leader，并且之后所有的读写就会转移到这个新的Leader上</p>
+<p>只有那些跟Leader保持同步的Follower才应该被选作新的Leader。</p>
+<p>显然通过ISR，Kafka需要的冗余度较低，可以容忍的失败数比较高。假设某个topic有f+1个副本，Kafka可以容忍f个服务器不可用。</p>
+<blockquote>
+<p><strong>为什么不用少数服从多数的方法</strong></p>
+<p>少数服从多数是一种比较常见的一致性算法和Leader选举法。这种算法需要较高的冗余度。譬如只允许一台机器失败，需要有三个副本；而如果只容忍两台机器失败，则需要五个副本。而kafka的ISR集合方法，分别只需要两个和三个副本。</p>
+</blockquote>
+<h3 id="保证数据一致性机制"><a href="#保证数据一致性机制" class="headerlink" title="保证数据一致性机制"></a>保证数据一致性机制</h3><p><strong>Ack机制</strong><br>为保证 producer 发送的数据，能可靠的发送到指定的 topic，topic 的每个 partition 收到producer 发送的数据后，都需要向 producer 发送 Ack，如果producer 收到 Ack，就会进行下一轮的发送，否则重新发送数据</p>
+<p>可以通过request.required.acks参数设置数据可靠性的级别：</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>Acks</th>
+<th>规则</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Producer发送一次就不再发送了，不管是否发送成功，可能丢数据。</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Producer只要收到一个分区副本成功写入的通知就认为推送消息成功了。这里有一个地方需要注意，这个副本必须是leader副本。只有leader副本成功写入了，producer才会认为消息发送成功。</td>
+</tr>
+<tr>
+<td>-1</td>
+<td>Producer只有收到分区内所有副本的成功写入的通知才认为推送消息成功了。<br />延时取决于最慢的机器。强一致，不会丢数据。<br />如果ISR少于min.insync.replicas指定的数目，那么就会返回不可用</td>
+</tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p>注意：ack的默认值就是1。这个默认值其实就是吞吐量与可靠性的一个折中方案。生产上我们可以根据实际情况进行调整，比如如果你要追求高吞吐量，那么就要放弃可靠性。</p>
+</blockquote>
+<p>-</p>
+<blockquote>
+<p>ack=1的情况下消息也可能会丢失</p>
+<p>原因：producer只要收到分区leader成功写入的通知就会认为消息发送成功了。如果leader成功写入后，还没来得及把数据同步到follower节点就挂了，这时候消息就丢失了。</p>
+</blockquote>
+<p>-</p>
+<blockquote>
+<p>内容参考：<br><a href="https://www.jianshu.com/p/d3e963ff8b70" target="_blank" rel="noopener">《震惊了！原来这才是kafka！》</a></p>
+</blockquote>
+<h2 id="7-消费"><a href="#7-消费" class="headerlink" title="7.消费"></a>7.消费</h2><p>订阅topic是以一个消费组来订阅的，一个消费组里面可以有多个消费者。同一个消费组中的两个消费者，不会同时消费一个partition。换句话来说，<strong>就是一个partition，只能被消费组里的一个消费者消费</strong>，但是可以同时被多个消费组消费。因此，如果消费组内的消费者如果比partition多的话，那么就会有个别消费者一直空闲。</p>
+<p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330233232.png" alt=""></p>
+<p>一个消费组消费partition，需要保存offset记录消费到哪，以前保存在zk中，由于zk的写性能不好，以前的解决方法都是consumer每隔一分钟上报一次。这里zk的性能严重影响了消费的速度，而且很容易出现重复消费。<br>在0.10版本后，kafka把这个offset的保存，从zk总剥离，保存在一个名叫__consumeroffsets topic的topic中。写进消息的key由groupid、topic、partition组成，value是偏移量offset。topic配置的清理策略是compact。总是保留最新的key，其余删掉。一般情况下，每个key的offset都是缓存在内存中，查询的时候不用遍历partition，如果没有缓存，第一次就会遍历partition建立缓存，然后查询返回。</p>
+<h2 id="8-消息投递语义"><a href="#8-消息投递语义" class="headerlink" title="8.消息投递语义"></a>8.消息投递语义</h2><p>Kafka支持3种消息投递语义</p>
+<ul>
+<li>At most once：最多一次，消息可能会丢失，但不会重复 </li>
+<li>At least once：最少一次，消息不会丢失，可能会重复</li>
+<li>Exactly once：只且一次，消息不丢失不重复，只且消费一次</li>
+</ul>
+
+                
+                <hr>
+                <!-- Pager -->
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/03/31/杂记-Hexo添加图片放大功能/" data-toggle="tooltip" data-placement="top" title="Hexo添加图片放大功能">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/03/29/全面回忆-《全面回忆》之-—-HBase/" data-toggle="tooltip" data-placement="top" title="《全面回忆》之 — HBase">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                <!-- tip start -->
+                
+                <div class="comment_notes_blank"></div>
+                <div class="visitor_notice">
+                    <img 
+                        src="/img/notice.png" 
+                        alt="notice"
+                        title="notice"/>
+                    <p class="notice">
+                        除非注明，本博文章均为原创，转载请以链接形式标明本文地址.
+                    </p>
+                </div>
+                
+
+                
+                <div class="comment_notes">
+                    <p>
+                        
+                    </p>
+                </div>
+                
+                <!-- tip end -->
+
+                <!-- Music start-->
+                
+                <!-- Music end -->
+
+                <!-- Sharing -->
+                
+                <!-- Sharing -->
+
+                <!-- gitment start -->
+                
+                <!-- gitment end -->
+			
+			<!-- valine_comments start -->	
+						
+			<!-- valine_comments end -->
+			
+			<!-- 来必力City版安装代码 -->
+                
+                <hr>
+                <div id="lv-container" data-id="city" data-uid="MTAyMC80OTY0OC8yNjEzOQ==">
+                    <script type="text/javascript">
+                   (function(d, s) {
+                       var j, e = d.getElementsByTagName(s)[0];
+
+                       if (typeof LivereTower === 'function') { return; }
+
+                       j = d.createElement(s);
+                       j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+                       j.async = true;
+
+                       e.parentNode.insertBefore(j, e);
+                   })(document, 'script');
+                    </script>
+                <noscript> 为正常使用来必力评论功能请激活JavaScript</noscript>
+                </div>
+                
+                <!-- City版安装代码已完成 -->
+
+            </div>
+            
+
+			
+            <!-- Tabe of Content -->
+            <!-- Table of Contents -->
+
+    
+      <aside id="sidebar">
+        <div id="toc" class="toc-article">
+        <strong class="toc-title">Contents</strong>
+        
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#1-主要特性"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">1.主要特性</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#2-基本概念"><span class="toc-nav-number">2.</span> <span class="toc-nav-text">2.基本概念</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#3-总体数据流"><span class="toc-nav-number">3.</span> <span class="toc-nav-text">3.总体数据流</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#4-生产基本流程"><span class="toc-nav-number">4.</span> <span class="toc-nav-text">4.生产基本流程</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#5-Kafka-为何如此之快"><span class="toc-nav-number">5.</span> <span class="toc-nav-text">5.Kafka 为何如此之快</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#写入：页缓存技术-磁盘顺序写"><span class="toc-nav-number">5.1.</span> <span class="toc-nav-text">写入：页缓存技术 + 磁盘顺序写</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#读取：零拷贝技术"><span class="toc-nav-number">5.2.</span> <span class="toc-nav-text">读取：零拷贝技术</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#注意事项与相关参数"><span class="toc-nav-number">5.3.</span> <span class="toc-nav-text">注意事项与相关参数</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#6-多副本与数据一致性"><span class="toc-nav-number">6.</span> <span class="toc-nav-text">6.多副本与数据一致性</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#补充概念"><span class="toc-nav-number">6.1.</span> <span class="toc-nav-text">补充概念</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Leader的选举与容灾"><span class="toc-nav-number">6.2.</span> <span class="toc-nav-text">Leader的选举与容灾</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#保证数据一致性机制"><span class="toc-nav-number">6.3.</span> <span class="toc-nav-text">保证数据一致性机制</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#7-消费"><span class="toc-nav-number">7.</span> <span class="toc-nav-text">7.消费</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#8-消息投递语义"><span class="toc-nav-number">8.</span> <span class="toc-nav-text">8.消息投递语义</span></a></li></ol>
+        
+        </div>
+      </aside>
+    
+
+                
+            <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+                       
+                          <a class="tag" href="/tags/#全面回忆" title="全面回忆">全面回忆</a>
+                        
+                          <a class="tag" href="/tags/#Kafka" title="Kafka">Kafka</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("https://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'left',
+          icon: 'ℬ'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+
+
+<style  type="text/css">
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; GY 2021 
+                    <br>
+                    Powered by 
+                    <a href="https://github.com/dusign/hexo-theme-snail" target="_blank" rel="noopener">
+                        <i>hexo-theme-snail</i>
+                    </a> | 
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0"
+                        width="100px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=dusign&repo=hexo-theme-snail&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/hux-blog.min.js"></script>
+
+
+<!-- Search -->
+
+<script src="/js/search.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 百度站长 -->
+<script>
+(function(){
+    var bp = document.createElement('script');
+    var curProtocol = window.location.protocol.split(':')[0];
+    if (curProtocol === 'https') {
+        bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+    }
+    else {
+        bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+    }
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(bp, s);
+})();
+</script>
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://gaothink.top/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("https://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+
+<!-- Search -->
+
+    <script type="text/javascript">      
+        var search_path = "search.xml";
+        if (search_path.length == 0) {
+            search_path = "search.xml";
+        }
+    var path = "/" + search_path;
+    searchFunc(path, 'local-search-input', 'local-search-result');
+    </script>
+
+
+<!-- busuanzi -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+
+
+
+
+
+	<a id="rocket" href="#top" class=""></a>
+	<script type="text/javascript" src="/js/totop.js?v=1.0.0" async=""></script>
+    <script type="text/javascript" src="/js/toc.js?v=1.0.0" async=""></script>
+	
+    
+        <!-- background effects line -->
+        
+
+        
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+        
+
+        <!-- background effects end -->
+    
+
+    <!--<script size="50" alpha='0.3' zIndex="-999" src="/js/ribbonStatic.js"></script>-->
+    
+        <script src="/js/ribbonDynamic.js"></script>
+    
+	
+	
+        <script type="text/javascript" src="/js/fancybox/jquery.fancybox.min.js"></script>
+        <script type="text/javascript" src="/js/wrapImage.js"></script>
+    
+	
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+
+</html>
