@@ -135,9 +135,9 @@
                     <div class="post-heading">
                         <div class="tags">
                             
-                              <a class="tag" href="/tags/#全面回忆" title="全面回忆">全面回忆</a>
-                            
                               <a class="tag" href="/tags/#Kafka" title="Kafka">Kafka</a>
+                            
+                              <a class="tag" href="/tags/#全面回忆" title="全面回忆">全面回忆</a>
                             
                         </div>
                         <h1>《全面回忆》之 — Kafka</h1>
@@ -150,7 +150,7 @@
                         
                             <div class="blank_box"></div>
                             <span class="meta">
-                                Words <span class="post-count">3.7k</span> and
+                                Words <span class="post-count">3.8k</span> and
                                 Reading Time <span class="post-count">13</span> Minutes
                             </span>
                             <div class="blank_box"></div>
@@ -400,6 +400,7 @@
 <p><img src="https://gaothink-pics.oss-cn-hangzhou.aliyuncs.com/img/20200330174252.png" alt=""></p>
 <p>当存在多副本的情况下，会尽量把多个副本，分配到不同的broker上。</p>
 <p><strong>为了保证较高的处理效率，消息的读写都是在固定的一个副本上完成，这个副本就是所谓的Leader，之后所有该Partition的请求，实际操作的都是leader，而其他副本则是Follower。Follower会定期地到Leader上同步数据。</strong></p>
+<p><strong>在进行数据备份时，不是leader主动将数据Push给follower，而是follower去向leader Pull数据过来</strong></p>
 <p>Kafka会在ZooKeeper上针对每个Topic维护一个称为ISR（<strong>in-sync replica，已同步的副本</strong>）的集合，该集合中是一些分区的副本。如果这个集合有增减，Kafka 会更新ZooKeeper上的记录。</p>
 <p>当一个broker宕机后，所有leader在该broker上的Partition都会重新选举，选出一个leader，并且之后所有的读写就会转移到这个新的Leader上</p>
 <p>只有那些跟Leader保持同步的Follower才应该被选作新的Leader。</p>
@@ -454,6 +455,14 @@
 <li>At most once：最多一次，消息可能会丢失，但不会重复 </li>
 <li>At least once：最少一次，消息不会丢失，可能会重复</li>
 <li>Exactly once：只且一次，消息不丢失不重复，只且消费一次</li>
+</ul>
+<h3 id="9-宕机如何恢复"><a href="#9-宕机如何恢复" class="headerlink" title="9.宕机如何恢复"></a>9.宕机如何恢复</h3><p><strong>（1）少部分副本宕机</strong><br>当leader宕机了，会从follower选择一个作为leader。当宕机的重新恢复时，会把之前commit的数据清空，重新从leader里pull数据。</p>
+<p><strong>（2）全部副本宕机</strong><br>当全部副本宕机了有两种恢复方式</p>
+<ul>
+<li><p>1、等待ISR中的一个恢复后，并选它作为leader。（等待时间较长，降低可用性）</p>
+</li>
+<li><p>2、选择第一个恢复的副本作为新的leader，无论是否在ISR中。（并未包含之前leader commit的数据，因此造成数据丢失）</p>
+</li>
 </ul>
 
                 
@@ -545,7 +554,7 @@
         <div id="toc" class="toc-article">
         <strong class="toc-title">Contents</strong>
         
-          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#1-主要特性"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">1.主要特性</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#2-基本概念"><span class="toc-nav-number">2.</span> <span class="toc-nav-text">2.基本概念</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#3-总体数据流"><span class="toc-nav-number">3.</span> <span class="toc-nav-text">3.总体数据流</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#4-生产基本流程"><span class="toc-nav-number">4.</span> <span class="toc-nav-text">4.生产基本流程</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#5-Kafka-为何如此之快"><span class="toc-nav-number">5.</span> <span class="toc-nav-text">5.Kafka 为何如此之快</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#写入：页缓存技术-磁盘顺序写"><span class="toc-nav-number">5.1.</span> <span class="toc-nav-text">写入：页缓存技术 + 磁盘顺序写</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#读取：零拷贝技术"><span class="toc-nav-number">5.2.</span> <span class="toc-nav-text">读取：零拷贝技术</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#注意事项与相关参数"><span class="toc-nav-number">5.3.</span> <span class="toc-nav-text">注意事项与相关参数</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#6-多副本与数据一致性"><span class="toc-nav-number">6.</span> <span class="toc-nav-text">6.多副本与数据一致性</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#补充概念"><span class="toc-nav-number">6.1.</span> <span class="toc-nav-text">补充概念</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Leader的选举与容灾"><span class="toc-nav-number">6.2.</span> <span class="toc-nav-text">Leader的选举与容灾</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#保证数据一致性机制"><span class="toc-nav-number">6.3.</span> <span class="toc-nav-text">保证数据一致性机制</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#7-消费"><span class="toc-nav-number">7.</span> <span class="toc-nav-text">7.消费</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#8-消息投递语义"><span class="toc-nav-number">8.</span> <span class="toc-nav-text">8.消息投递语义</span></a></li></ol>
+          <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#1-主要特性"><span class="toc-nav-number">1.</span> <span class="toc-nav-text">1.主要特性</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#2-基本概念"><span class="toc-nav-number">2.</span> <span class="toc-nav-text">2.基本概念</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#3-总体数据流"><span class="toc-nav-number">3.</span> <span class="toc-nav-text">3.总体数据流</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#4-生产基本流程"><span class="toc-nav-number">4.</span> <span class="toc-nav-text">4.生产基本流程</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#5-Kafka-为何如此之快"><span class="toc-nav-number">5.</span> <span class="toc-nav-text">5.Kafka 为何如此之快</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#写入：页缓存技术-磁盘顺序写"><span class="toc-nav-number">5.1.</span> <span class="toc-nav-text">写入：页缓存技术 + 磁盘顺序写</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#读取：零拷贝技术"><span class="toc-nav-number">5.2.</span> <span class="toc-nav-text">读取：零拷贝技术</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#注意事项与相关参数"><span class="toc-nav-number">5.3.</span> <span class="toc-nav-text">注意事项与相关参数</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#6-多副本与数据一致性"><span class="toc-nav-number">6.</span> <span class="toc-nav-text">6.多副本与数据一致性</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#补充概念"><span class="toc-nav-number">6.1.</span> <span class="toc-nav-text">补充概念</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Leader的选举与容灾"><span class="toc-nav-number">6.2.</span> <span class="toc-nav-text">Leader的选举与容灾</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#保证数据一致性机制"><span class="toc-nav-number">6.3.</span> <span class="toc-nav-text">保证数据一致性机制</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#7-消费"><span class="toc-nav-number">7.</span> <span class="toc-nav-text">7.消费</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#8-消息投递语义"><span class="toc-nav-number">8.</span> <span class="toc-nav-text">8.消息投递语义</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#9-宕机如何恢复"><span class="toc-nav-number">8.1.</span> <span class="toc-nav-text">9.宕机如何恢复</span></a></li></ol></li></ol>
         
         </div>
       </aside>
@@ -565,9 +574,9 @@
                     <h5><a href="/tags/">FEATURED TAGS</a></h5>
                     <div class="tags">
                        
-                          <a class="tag" href="/tags/#全面回忆" title="全面回忆">全面回忆</a>
-                        
                           <a class="tag" href="/tags/#Kafka" title="Kafka">Kafka</a>
+                        
+                          <a class="tag" href="/tags/#全面回忆" title="全面回忆">全面回忆</a>
                         
                     </div>
                 </section>
@@ -767,7 +776,7 @@
         
 
         
-            <script type="text/javascript" src="/js/mouse-click.js" content='[&quot;🌱&quot;,&quot;🍀&quot;]' color='[&quot;rgb(121,93,179)&quot; ,&quot;rgb(76,180,231)&quot; ,&quot;rgb(184,90,154)&quot;]'></script>
+            <script type="text/javascript" src="/js/mouse-click.js" content='[&#34;🌱&#34;,&#34;🍀&#34;]' color='[&#34;rgb(121,93,179)&#34; ,&#34;rgb(76,180,231)&#34; ,&#34;rgb(184,90,154)&#34;]'></script>
         
 
         <!-- background effects end -->
@@ -783,21 +792,6 @@
         <script type="text/javascript" src="/js/wrapImage.js"></script>
     
 	
-<script type="text/x-mathjax-config">
-    MathJax.Hub.Config({
-        tex2jax: {
-            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
-            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-            processEscapes: true
-        }
-    });
-    MathJax.Hub.Queue(function() {
-        var all = MathJax.Hub.getAllJax();
-        for (var i = 0; i < all.length; ++i)
-            all[i].SourceElement().parentNode.className += ' has-jax';
-    });
-</script>
-<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 </body>
 
 </html>
